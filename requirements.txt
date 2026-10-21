@@ -1,0 +1,6 @@
+pyinstaller>=6.0
+# Runtime dependencies of the wizard itself are standard library only.
+# Optional packages the wizard can help install:
+# pyserial
+# Pillow
+# requests
