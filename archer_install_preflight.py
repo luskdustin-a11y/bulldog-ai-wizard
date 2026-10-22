@@ -27,6 +27,7 @@ def simulate_install(laptop=REPORTED_HP):
         {"component": "Windows architecture", "result": "needs_verification" if laptop.architecture == "unverified" else "reported", "reason": "Actual 64-bit Windows system type not captured"},
         {"component": "App Control for Business", "result": "needs_verification", "reason": "Owner screenshot shows enforced App Control policy; unsigned or untrusted packaged executable may be blocked"},
         {"component": "Virtualization-based security", "result": "compatible_on_paper", "reason": "Owner screenshot confirms VBS and hypervisor-enforced code integrity running; do not disable protections"},
+        {"component": "SSD model and health", "result": "needs_verification", "reason": "Device Manager confirms WD Blue SN5000 4TB NVMe SSD; drive health, temperature, firmware and SMART results not yet measured"},
         {"component": "Drive encryption status", "result": "needs_verification", "reason": "Windows C: shows a padlock icon; confirm actual BitLocker/device encryption protection status before installation"},
         {"component": "Available RAM", "result": "compatible_on_paper", "reason": "Owner screenshot shows 49.4 GB available physical memory and 50.8 GB available virtual memory at capture time"},
         {"component": "Android APK", "result": "not_implemented", "reason": "No verified APK build and device test"},
