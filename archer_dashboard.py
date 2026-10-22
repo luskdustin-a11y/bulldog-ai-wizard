@@ -16,7 +16,7 @@ class ArcherDashboard(tk.Tk):
         self.minsize(760, 500)
         self.configure(bg="#101722")
         self.department = tk.StringVar(value=core.DEPARTMENTS[0])
-        self.status = tk.StringVar(value="LOCAL MODE • AI optional • No sync")
+        self.status = tk.StringVar(value="LOCAL MODE • No AI model connected by default • No sync")
         self.ai_enabled = tk.BooleanVar(value=False)
         self.ai_busy = False
         self._build()
