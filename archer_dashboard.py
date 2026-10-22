@@ -19,8 +19,31 @@ class ArcherDashboard(tk.Tk):
         self.status = tk.StringVar(value="LOCAL MODE • No AI model connected by default • No sync")
         self.ai_enabled = tk.BooleanVar(value=False)
         self.ai_busy = False
+        self._last_activity = __import__('time').monotonic()
+        self.bind_all('<KeyPress>', self._activity, add='+')
+        self.bind_all('<Button>', self._activity, add='+')
+        self.after(10000, self._idle_check)
         self._build()
         self.refresh()
+
+    def _activity(self, _event=None):
+        self._last_activity = __import__('time').monotonic()
+
+    def _idle_check(self):
+        if __import__('time').monotonic() - self._last_activity >= 300:
+            self.withdraw()
+            from tkinter import simpledialog
+            from pathlib import Path
+            from archer_pin import PinGate
+            gate = PinGate(Path.home() / '.bulldawg_ai' / 'owner_pin.json')
+            entered = simpledialog.askstring('ARCHER locked', 'Enter your PIN to unlock', show='*', parent=self)
+            if entered is not None and gate.unlock(entered):
+                self._activity()
+                self.deiconify()
+            else:
+                self.destroy()
+                return
+        self.after(10000, self._idle_check)
 
     def _build(self):
         style = ttk.Style(self)
