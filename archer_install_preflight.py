@@ -10,7 +10,7 @@ class Laptop:
     ssd_gb: int
     touchscreen: bool
     architecture: str = "unverified"
-    free_disk_gb: int | None = None
+    free_disk_gb: int | None = 3530
     python_version: str = "unverified"
     ollama_installed: bool = False
 
@@ -27,6 +27,7 @@ def simulate_install(laptop=REPORTED_HP):
         {"component": "Windows architecture", "result": "needs_verification" if laptop.architecture == "unverified" else "reported", "reason": "Actual 64-bit Windows system type not captured"},
         {"component": "App Control for Business", "result": "needs_verification", "reason": "Owner screenshot shows enforced App Control policy; unsigned or untrusted packaged executable may be blocked"},
         {"component": "Virtualization-based security", "result": "compatible_on_paper", "reason": "Owner screenshot confirms VBS and hypervisor-enforced code integrity running; do not disable protections"},
+        {"component": "Drive encryption status", "result": "needs_verification", "reason": "Windows C: shows a padlock icon; confirm actual BitLocker/device encryption protection status before installation"},
         {"component": "Available RAM", "result": "compatible_on_paper", "reason": "Owner screenshot shows 49.4 GB available physical memory and 50.8 GB available virtual memory at capture time"},
         {"component": "Android APK", "result": "not_implemented", "reason": "No verified APK build and device test"},
         {"component": "Private login and encryption", "result": "not_implemented", "reason": "Local SQLite notes are not encrypted; do not enter sensitive information"},
