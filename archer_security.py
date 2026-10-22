@@ -10,7 +10,7 @@ import secrets
 ITERATIONS = 600_000
 
 def hash_password(password: str) -> str:
-    if len(password) < 12:
+    if not isinstance(password, str) or len(password) < 12:
         raise ValueError("Password must be at least 12 characters")
     salt = secrets.token_bytes(16)
     digest = hashlib.pbkdf2_hmac("sha256", password.encode(), salt, ITERATIONS)
@@ -19,7 +19,7 @@ def hash_password(password: str) -> str:
 def verify_password(password: str, encoded: str) -> bool:
     try:
         algorithm, rounds, salt, digest = encoded.split("$")
-        if algorithm != "pbkdf2_sha256" or int(rounds) < 100_000:
+        if algorithm != "pbkdf2_sha256" or not 100_000 <= int(rounds) <= 2_000_000 or len(salt) != 32 or len(digest) != 64:
             return False
         calculated = hashlib.pbkdf2_hmac("sha256", password.encode(), bytes.fromhex(salt), int(rounds))
         return hmac.compare_digest(calculated, bytes.fromhex(digest))
