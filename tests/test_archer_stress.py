@@ -1,6 +1,7 @@
 """Repeatable ARCHER stress tests. No network or device access."""
 import concurrent.futures
 import sqlite3
+import time
 import tempfile
 import unittest
 from pathlib import Path
@@ -45,6 +46,9 @@ class StressTests(unittest.TestCase):
                 with concurrent.futures.ThreadPoolExecutor(max_workers=10) as pool:
                     results = list(pool.map(lambda _: len(core.list_notes("Shop AI")), range(100)))
                 self.assertEqual(results, [1] * 100)
+                # Ensure SQLite handles have closed before Windows removes temp files.
+                with sqlite3.connect(core.DB) as db:
+                    self.assertEqual(db.execute("PRAGMA integrity_check").fetchone()[0], "ok")
 
     def test_password_checks(self):
         encoded = hash_password("stress-test-private-password")
