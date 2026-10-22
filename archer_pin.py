@@ -17,6 +17,14 @@ class PinGate:
         self.failed = 0
         self.lock_until = 0.0
         self.unlocked = False
+        self._load_lockout()
+
+    def _load_lockout(self):
+        try:
+            state = json.loads(self.path.with_suffix(".lock").read_text())
+            self.lock_until = float(state.get("until", 0))
+        except (OSError, ValueError, TypeError):
+            self.lock_until = 0.0
 
     def configured(self):
         return self.path.exists()
@@ -36,7 +44,7 @@ class PinGate:
         self.unlocked = True
 
     def unlock(self, pin):
-        if time.monotonic() < self.lock_until:
+        if time.time() < self.lock_until:
             return False
         if not self.configured():
             return False
@@ -53,12 +61,14 @@ class PinGate:
         if valid:
             self.failed = 0
             self.unlocked = True
+            self.path.with_suffix(".lock").unlink(missing_ok=True)
             return True
         self.unlocked = False
         self.failed += 1
         if self.failed >= LIMIT:
             self.failed = 0
-            self.lock_until = time.monotonic() + LOCK_SECONDS
+            self.lock_until = time.time() + LOCK_SECONDS
+            self.path.with_suffix(".lock").write_text(json.dumps({"until": self.lock_until}))
         return False
 
     def lock(self):
