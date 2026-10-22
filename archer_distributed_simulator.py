@@ -83,6 +83,7 @@ def simulation_report():
     scenarios["revocation_blocks_replay"] = fleet.recover() == 0
     scenarios["unauthorized_denied"] = fleet.send("VAL","VAL","status") == "DENIED"
     scenarios["unknown_unit_denied"] = fleet.send("intruder","VAL","status") == "DENIED"
+    fleet.units["VAL"].authorized = True
     fleet.vpn_connected = False
     scenarios["vpn_outage_queues"] = fleet.send("VAL","VAL","status") == "QUEUED"
     fleet.vpn_connected = True
