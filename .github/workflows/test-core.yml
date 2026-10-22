@@ -18,6 +18,6 @@ jobs:
         with:
           python-version: '3.13'
       - name: Compile
-        run: python -m py_compile bulldawg_core.py bulldog_install_wizard.py
-      - name: Unit tests
+        run: python -m compileall -q bulldawg_core.py bulldog_install_wizard.py archer_*.py
+      - name: Unit and stress tests
         run: python -m unittest discover -s tests -v
