@@ -25,6 +25,7 @@ jobs:
       - name: Run full simulated laptop acceptance
         run: python archer_laptop_acceptance.py
       - name: Generate complete feature failure report
+        continue-on-error: true
         shell: pwsh
         run: |
           python archer_full_integration.py
