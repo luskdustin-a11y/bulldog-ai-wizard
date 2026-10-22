@@ -4,6 +4,7 @@ import json
 import os
 import sqlite3
 import sys
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -24,6 +25,16 @@ def connect():
         os.chmod(DB, 0o600)
     return db
 
+@contextmanager
+def managed_connection():
+    """Commit/rollback and ALWAYS close SQLite handles (including on Windows)."""
+    db = connect()
+    try:
+        with db:
+            yield db
+    finally:
+        db.close()
+
 def add_note(department, text):
     if department not in DEPARTMENTS:
         raise ValueError("Unknown department")
@@ -31,14 +42,14 @@ def add_note(department, text):
         raise ValueError("Empty note")
     if len(text) > 10000:
         raise ValueError("Note exceeds 10,000 characters")
-    with connect() as db:
+    with managed_connection() as db:
         db.execute("INSERT INTO notes(department,text,created) VALUES(?,?,?)",
                    (department, text.strip(), datetime.now(timezone.utc).isoformat()))
 
 def list_notes(department=None):
     if department is not None and department not in DEPARTMENTS:
         raise ValueError("Unknown department")
-    with connect() as db:
+    with managed_connection() as db:
         if department:
             rows = db.execute("SELECT id,department,text,created FROM notes WHERE department=? ORDER BY id DESC", (department,)).fetchall()
         else:
@@ -46,7 +57,7 @@ def list_notes(department=None):
     return [dict(zip(("id","department","text","created"), row)) for row in rows]
 
 def health():
-    with connect() as db:
+    with managed_connection() as db:
         count = db.execute("SELECT COUNT(*) FROM notes").fetchone()[0]
     return {"status":"ok","mode":"offline","departments":list(DEPARTMENTS),"notes":count,
             "database":str(DB),"encrypted":False,"ai_model_connected":False,
