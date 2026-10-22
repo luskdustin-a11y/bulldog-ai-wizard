@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """ARCHER local desktop dashboard. Standard-library only; no network services."""
 import tkinter as tk
+import threading
 from tkinter import messagebox, ttk
 import bulldawg_core as core
-from archer_persona import SYSTEM_NAME
+from archer_persona import SYSTEM_NAME, build_system_prompt, ResponseContext
+from archer_brain import respond
+from archer_model import chat, ModelUnavailable
 
 class ArcherDashboard(tk.Tk):
     def __init__(self):
@@ -13,7 +16,9 @@ class ArcherDashboard(tk.Tk):
         self.minsize(760, 500)
         self.configure(bg="#101722")
         self.department = tk.StringVar(value=core.DEPARTMENTS[0])
-        self.status = tk.StringVar(value="LOCAL MODE • No AI model connected • No sync")
+        self.status = tk.StringVar(value="LOCAL MODE • AI optional • No sync")
+        self.ai_enabled = tk.BooleanVar(value=False)
+        self.ai_busy = False
         self._build()
         self.refresh()
 
@@ -53,6 +58,49 @@ class ArcherDashboard(tk.Tk):
         tk.Button(controls, text="Save note", command=self.save, bg="#3a688d", fg="white", padx=18, pady=8).pack(side="left")
         tk.Button(controls, text="Refresh", command=self.refresh, padx=18, pady=8).pack(side="left", padx=10)
         tk.Button(controls, text="System health", command=self.show_health, padx=18, pady=8).pack(side="right")
+        chatpanel = tk.Frame(panel, bg="#101722")
+        chatpanel.pack(fill="x", pady=(14, 0))
+        tk.Label(chatpanel, text="ARCHER chat", fg="white", bg="#101722",
+                 font=("Segoe UI", 14, "bold")).pack(anchor="w")
+        tk.Checkbutton(chatpanel, text="Use local Ollama (requires separate installation)",
+                       variable=self.ai_enabled, fg="white", bg="#101722",
+                       selectcolor="#34465c", activebackground="#101722").pack(anchor="w")
+        self.chat_input = tk.Entry(chatpanel, font=("Segoe UI", 11))
+        self.chat_input.pack(fill="x", pady=5)
+        self.chat_input.bind("<Return>", lambda _event: self.ask())
+        self.ask_button = tk.Button(chatpanel, text="Ask ARCHER", command=self.ask)
+        self.ask_button.pack(anchor="w")
+        self.chat_reply = tk.Label(chatpanel, text="No conversation yet.", wraplength=580,
+                                   justify="left", fg="#eaf0fb", bg="#101722")
+        self.chat_reply.pack(fill="x", anchor="w", pady=8)
+
+    def ask(self):
+        message = self.chat_input.get().strip()
+        if not message or self.ai_busy:
+            return
+        self.ai_busy = True
+        self.ask_button.configure(state="disabled")
+        self.chat_reply.configure(text="ARCHER is processing...")
+        use_ai = self.ai_enabled.get()
+        def worker():
+            try:
+                routed = respond(message)
+                if use_ai:
+                    prompt = build_system_prompt(ResponseContext(safety_critical=routed.mode == "serious"))
+                    try:
+                        answer = chat(message, prompt)
+                    except ModelUnavailable:
+                        answer = routed.text + " Local AI unavailable."
+                else:
+                    answer = routed.text
+            except Exception as exc:
+                answer = f"ARCHER could not complete this request: {type(exc).__name__}"
+            def done():
+                self.chat_reply.configure(text=answer)
+                self.ai_busy = False
+                self.ask_button.configure(state="normal")
+            self.after(0, done)
+        threading.Thread(target=worker, daemon=True).start()
 
     def refresh(self):
         dept = self.department.get()
