@@ -30,7 +30,12 @@ class DepartmentHub:
         self._handlers = {}
 
     def enroll(self, device_id, departments):
-        if isinstance(departments, (str, bytes)):\n            raise ValueError("Permissions must be a collection")\n        try:\n            allowed = frozenset(departments)\n        except (TypeError, ValueError):\n            raise ValueError("Invalid department permissions") from None
+        if isinstance(departments, (str, bytes)):
+            raise ValueError("Permissions must be a collection")
+        try:
+            allowed = frozenset(departments)
+        except (TypeError, ValueError):
+            raise ValueError("Invalid department permissions") from None
         if not isinstance(device_id, str) or not device_id.strip() or not allowed or not allowed <= DEPARTMENTS:
             raise ValueError("Invalid device or department permissions")
         if device_id in self._devices:
@@ -38,7 +43,9 @@ class DepartmentHub:
         self._devices[device_id] = allowed
 
     def revoke(self, device_id):
-        if not isinstance(device_id, str):\n            raise ValueError("Invalid device ID")\n        self._devices.pop(device_id, None)
+        if not isinstance(device_id, str):
+            raise ValueError("Invalid device ID")
+        self._devices.pop(device_id, None)
 
     def register(self, department, handler):
         if not isinstance(department, str) or department not in DEPARTMENTS or not callable(handler):
@@ -50,12 +57,14 @@ class DepartmentHub:
             raise ValueError("Invalid request")
         if not isinstance(request.question, str) or not request.question.strip() or len(request.question) > 10000:
             raise ValueError("Invalid question")
-        if not isinstance(request.device_id, str):\n            raise ValueError("Invalid device ID")\n        if request.department not in self._devices.get(request.device_id, frozenset()):
+        if not isinstance(request.device_id, str):
+            raise ValueError("Invalid device ID")
+        if request.department not in self._devices.get(request.device_id, frozenset()):
             raise PermissionError("Device not authorized for department")
         handler = self._handlers.get(request.department)
         if handler is None:
-            return {"department": request.department, "status": "ai-interface-only",
-                    "answer": self.engine.answer(request.question, request.department)}
+            return {"department": request.department, "status": "not-implemented",
+                    "answer": "No working department handler is registered."}
         return {"department": request.department, "status": "handled",
                 "answer": handler(request.question)}
 
