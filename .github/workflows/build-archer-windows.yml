@@ -24,6 +24,18 @@ jobs:
         run: python -m unittest discover -s tests -v
       - name: Run full simulated laptop acceptance
         run: python archer_laptop_acceptance.py
+      - name: Generate complete feature failure report
+        shell: pwsh
+        run: |
+          python archer_full_integration.py
+          if (!(Test-Path archer-integration-report.json)) { throw "Integration report missing" }
+      - name: Upload full integration report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ARCHER-Integration-Report
+          path: archer-integration-report.json
+          if-no-files-found: ignore
       - name: Run simulated installation checks
         run: python archer_windows_launcher.py --preflight
       - name: Run eight-department simulator
