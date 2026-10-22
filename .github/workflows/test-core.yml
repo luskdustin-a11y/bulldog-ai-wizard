@@ -4,6 +4,7 @@ on:
     branches: [main]
     paths:
       - 'bulldawg_core.py'
+      - 'archer_*.py'
       - 'tests/**'
       - '.github/workflows/test-core.yml'
   workflow_dispatch:
