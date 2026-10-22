@@ -23,6 +23,8 @@ class UniversalHub:
     def register_adapter(self, name, handler):
         if not isinstance(name, str) or not name.strip() or not callable(handler):
             raise ValueError('Invalid adapter')
+        if name in self.adapters:
+            raise ValueError('Adapter already registered')
         self.adapters[name] = handler
 
     def ask(self, device_id, department, question):
