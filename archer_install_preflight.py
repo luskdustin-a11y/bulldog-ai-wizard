@@ -14,11 +14,11 @@ class Laptop:
     python_version: str = "unverified"
     ollama_installed: bool = False
 
-REPORTED_HP = Laptop("Windows 11 Pro", "AMD Ryzen 5 7430U", 64, 4096, True)
+REPORTED_HP = Laptop("Windows 11 Pro build 26200; HP Laptop 17-cp3xxx; SKU B97RFUA#ABA; BIOS F.15; board 8DC4", "AMD Ryzen 5 7430U (6 cores, 12 threads)", 64, 4096, True, architecture="x64")
 
 def simulate_install(laptop=REPORTED_HP):
     checks = [
-        {"component": "Windows GUI", "result": "compatible_on_paper" if laptop.os.startswith("Windows 11") else "needs_verification", "reason": "Tkinter supported on Windows with Python Tcl/Tk"},
+        {"component": "Windows GUI", "result": "compatible_on_paper" if "Windows 11" in laptop.os else "needs_verification", "reason": "Tkinter supported on Windows with Python Tcl/Tk"},
         {"component": "CPU and RAM", "result": "compatible_on_paper" if laptop.ram_gb >= 16 else "needs_verification", "reason": "64 GB RAM reported; actual free memory and model benchmarks not measured"},
         {"component": "Windows installer EXE", "result": "needs_verification", "reason": "Installer wizard does not install the complete ARCHER system; EXE must be smoke-tested on Windows"},
         {"component": "Python runtime", "result": "needs_verification" if laptop.python_version == "unverified" else "present_reported", "reason": "Python installation and Tcl/Tk availability not measured"},
