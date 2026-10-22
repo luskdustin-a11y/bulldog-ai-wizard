@@ -24,6 +24,42 @@ def main():
         import json
         print(json.dumps(simulate_install(), indent=2))
         return 0
+    import tkinter as tk
+    from tkinter import simpledialog, messagebox
+    from pathlib import Path
+    from archer_pin import PinGate
+    gate = PinGate(Path.home() / '.bulldawg_ai' / 'owner_pin.json')
+    root = tk.Tk()
+    root.withdraw()
+    if not gate.configured():
+        first = simpledialog.askstring('ARCHER setup', 'Choose your 4-digit PIN', show='*', parent=root)
+        if first is None:
+            root.destroy()
+            return 1
+        second = simpledialog.askstring('ARCHER setup', 'Confirm your 4-digit PIN', show='*', parent=root)
+        if first != second:
+            messagebox.showerror('ARCHER', 'PINs do not match', parent=root)
+            root.destroy()
+            return 1
+        try:
+            gate.setup(first)
+        except (ValueError, PermissionError, OSError) as exc:
+            messagebox.showerror('ARCHER', str(exc), parent=root)
+            root.destroy()
+            return 1
+    else:
+        for _ in range(5):
+            supplied = simpledialog.askstring('ARCHER unlock', 'Enter your 4-digit PIN', show='*', parent=root)
+            if supplied is None:
+                root.destroy()
+                return 1
+            if gate.unlock(supplied):
+                break
+        if not gate.unlocked:
+            messagebox.showerror('ARCHER', 'Access denied. Try again later.', parent=root)
+            root.destroy()
+            return 1
+    root.destroy()
     ArcherDashboard().mainloop()
     return 0
 
