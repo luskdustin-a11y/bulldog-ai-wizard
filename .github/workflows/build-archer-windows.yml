@@ -24,6 +24,12 @@ jobs:
         run: python -m unittest discover -s tests -v
       - name: Run full simulated laptop acceptance
         run: python archer_laptop_acceptance.py
+      - name: Inspect CI Windows hardware safely
+        shell: pwsh
+        run: |
+          python archer_hardware_inventory.py | Out-File -Encoding utf8 archer-ci-hardware.json
+          $data = Get-Content archer-ci-hardware.json -Raw | ConvertFrom-Json
+          if ($data.system -ne "Windows") { throw "Expected Windows" }
       - name: Test each component in isolated Windows process
         run: python archer_isolated_test.py
       - name: Upload isolated component results
