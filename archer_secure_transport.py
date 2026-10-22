@@ -28,7 +28,7 @@ class LocalReceiver:
         self.secret = secret
         self.allowed_sources = set(allowed_sources)
         self.now = now
-        self.seen = set()
+        self.seen = {}
         self.messages = []
         self.lock = threading.Lock()
 
@@ -48,10 +48,11 @@ class LocalReceiver:
             return False
         if not isinstance(packet["signature"], str) or not hmac.compare_digest(sign(self.secret, env), packet["signature"]):
             return False
+        fingerprint = (env["source"], env["department"], env["payload"])
         with self.lock:
             if env["id"] in self.seen:
-                return True  # idempotent ACK: do not process twice
-            self.seen.add(env["id"])
+                return self.seen[env["id"]] == fingerprint  # reject ID reuse with changed contents
+            self.seen[env["id"]] = fingerprint
             self.messages.append(env)
         return True
 
