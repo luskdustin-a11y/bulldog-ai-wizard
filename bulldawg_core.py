@@ -17,6 +17,7 @@ def connect():
         ROOT.chmod(0o700)
     db = sqlite3.connect(DB, timeout=15)
     db.execute("PRAGMA busy_timeout=15000")
+    db.execute("PRAGMA journal_mode=DELETE")
     db.execute("CREATE TABLE IF NOT EXISTS notes (id INTEGER PRIMARY KEY, department TEXT NOT NULL, text TEXT NOT NULL, created TEXT NOT NULL)")
     db.commit()
     if os.name != "nt":
