@@ -33,7 +33,7 @@ class IntegrationTests(unittest.TestCase):
         bridge=DeviceBridge()
         bridge.enroll("my-phone","android-phone",{"hunting"})
         result=bridge.request("my-phone","hunting","camera status")
-        self.assertIn("not installed",result["answer"])
+        self.assertEqual(result["status"],"not-implemented")
         with self.assertRaises(PermissionError):
             bridge.request("my-phone","finances","accounts")
 
