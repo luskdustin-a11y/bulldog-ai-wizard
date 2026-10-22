@@ -23,7 +23,7 @@ def open_encrypted(path, passphrase):
     path.parent.mkdir(parents=True, exist_ok=True)
     db = _driver().connect(str(path), timeout=15)
     try:
-        db.execute("PRAGMA key = ?", (passphrase,))
+        db.execute("PRAGMA key = '" + passphrase.replace("'", "''") + "'")
         db.execute("SELECT count(*) FROM sqlite_master").fetchone()
         db.execute("CREATE TABLE IF NOT EXISTS notes (id INTEGER PRIMARY KEY, department TEXT NOT NULL, text TEXT NOT NULL, created TEXT NOT NULL)")
         db.commit()
