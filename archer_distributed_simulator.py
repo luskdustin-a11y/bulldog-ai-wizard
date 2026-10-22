@@ -1,5 +1,5 @@
 """Deterministic simulated distributed-unit integration; no real radios or network."""
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from archer_simulator import run_simulation
 
 DEPARTMENTS = ("Shop AI","VAL","Hunting","Property","Hotshot","Finances","Stocks","Supervisor")
@@ -16,10 +16,14 @@ class VirtualFleet:
         self.pending = []
         self.received = []
         self.sequence = 0
+        self.vpn_connected = True
+        self.data_allowed = True
+        self.power_available = True
         self.delivered_ids = set()
 
     def reachable(self, source):
-        if not self.units[source].online or not self.home_internet: return False
+        if not self.units[source].online or not self.home_internet or not self.power_available: return False
+        if not self.vpn_connected or not self.data_allowed: return False
         if not self.units["Phone"].online or not self.cellular: return False
         if source == "Android Radio": return self.hotspot
         if source.startswith("Garmin"): return self.bluetooth
@@ -79,4 +83,16 @@ def simulation_report():
     scenarios["revocation_blocks_replay"] = fleet.recover() == 0
     scenarios["unauthorized_denied"] = fleet.send("VAL","VAL","status") == "DENIED"
     scenarios["unknown_unit_denied"] = fleet.send("intruder","VAL","status") == "DENIED"
+    fleet.vpn_connected = False
+    scenarios["vpn_outage_queues"] = fleet.send("VAL","VAL","status") == "QUEUED"
+    fleet.vpn_connected = True
+    scenarios["vpn_recovery"] = fleet.recover() == 1
+    fleet.data_allowed = False
+    scenarios["data_outage_queues"] = fleet.send("VAL","VAL","status") == "QUEUED"
+    fleet.data_allowed = True
+    scenarios["data_recovery"] = fleet.recover() == 1
+    fleet.power_available = False
+    scenarios["power_outage_queues"] = fleet.send("VAL","VAL","status") == "QUEUED"
+    fleet.power_available = True
+    scenarios["power_recovery"] = fleet.recover() == 1
     return {"simulation_only":True,"physical_devices_tested":False,"passed":sum(scenarios.values()),"total":len(scenarios),"scenarios":scenarios}
