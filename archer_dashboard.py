@@ -160,4 +160,5 @@ class ArcherDashboard(tk.Tk):
                             f'Phone sync enabled: {state["phone_sync_enabled"]}')
 
 if __name__ == "__main__":
-    ArcherDashboard().mainloop()
+    from archer_windows_launcher import main
+    raise SystemExit(main())
