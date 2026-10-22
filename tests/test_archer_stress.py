@@ -1,5 +1,6 @@
 """Repeatable ARCHER stress tests. No network or device access."""
 import concurrent.futures
+from contextlib import closing
 import sqlite3
 import tempfile
 import unittest
@@ -35,7 +36,7 @@ class StressTests(unittest.TestCase):
                 notes = core.list_notes("Hunting")
                 self.assertEqual(len(notes), 500)
                 self.assertEqual(len({n["id"] for n in notes}), 500)
-                with sqlite3.connect(core.DB) as db:
+                with closing(sqlite3.connect(core.DB)) as db:
                     self.assertEqual(db.execute("PRAGMA integrity_check").fetchone()[0], "ok")
 
     def test_100_concurrent_read_requests(self):
@@ -45,7 +46,7 @@ class StressTests(unittest.TestCase):
                 with concurrent.futures.ThreadPoolExecutor(max_workers=10) as pool:
                     results = list(pool.map(lambda _: len(core.list_notes("Shop AI")), range(100)))
                 self.assertEqual(results, [1] * 100)
-                with sqlite3.connect(core.DB) as db:
+                with closing(sqlite3.connect(core.DB)) as db:
                     self.assertEqual(db.execute("PRAGMA integrity_check").fetchone()[0], "ok")
 
     def test_password_checks(self):
