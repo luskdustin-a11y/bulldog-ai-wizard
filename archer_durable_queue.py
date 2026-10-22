@@ -1,5 +1,6 @@
 """Simulation-only persistent outbound event queue. No network calls."""
 import sqlite3
+from contextlib import contextmanager
 import uuid
 from pathlib import Path
 
@@ -10,8 +11,14 @@ class DurableQueue:
         with self._connect() as db:
             db.execute('CREATE TABLE IF NOT EXISTS events (id TEXT PRIMARY KEY, source TEXT NOT NULL, department TEXT NOT NULL, payload TEXT NOT NULL, state TEXT NOT NULL DEFAULT "pending")')
 
+    @contextmanager
     def _connect(self):
-        return sqlite3.connect(self.path, timeout=10)
+        db = sqlite3.connect(self.path, timeout=10)
+        try:
+            with db:
+                yield db
+        finally:
+            db.close()
 
     def enqueue(self, source, department, payload):
         if not all(isinstance(x, str) and x.strip() for x in (source, department, payload)):
