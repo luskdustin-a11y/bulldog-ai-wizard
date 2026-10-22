@@ -1,0 +1,23 @@
+name: Test Offline Core
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'bulldawg_core.py'
+      - 'tests/**'
+      - '.github/workflows/test-core.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Compile
+        run: python -m py_compile bulldawg_core.py bulldog_install_wizard.py
+      - name: Unit tests
+        run: python -m unittest discover -s tests -v
