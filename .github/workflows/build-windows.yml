@@ -1,0 +1,35 @@
+name: Build Windows Wizard
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'bulldog_install_wizard.py'
+      - 'requirements.txt'
+      - '.github/workflows/build-windows.yml'
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Validate syntax
+        run: python -m py_compile bulldog_install_wizard.py
+      - name: Install PyInstaller
+        run: python -m pip install "pyinstaller>=6,<7"
+      - name: Build executable
+        run: python -m PyInstaller --clean --onefile --windowed --name BulldawgAI_InstallWizard bulldog_install_wizard.py
+      - name: Check executable and hash
+        shell: pwsh
+        run: |
+          if (!(Test-Path dist/BulldawgAI_InstallWizard.exe)) { throw 'EXE missing' }
+          Get-FileHash dist/BulldawgAI_InstallWizard.exe -Algorithm SHA256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BulldawgAI-Windows-Wizard
+          path: dist/BulldawgAI_InstallWizard.exe
+          retention-days: 7
