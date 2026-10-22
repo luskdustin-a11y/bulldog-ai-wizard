@@ -24,8 +24,8 @@ class DepartmentHubTests(unittest.TestCase):
         hub=DepartmentHub()
         hub.enroll("phone",{"val"})
         result=hub.route(Request("phone","val","diagnose truck"))
-        self.assertEqual(result["status"],"ai-interface-only")
-        self.assertIn("not installed",result["answer"])
+        self.assertEqual(result["status"],"not-implemented")
+        self.assertIn("No working department handler",result["answer"])
 
     def test_revocation_immediate(self):
         hub=DepartmentHub()
