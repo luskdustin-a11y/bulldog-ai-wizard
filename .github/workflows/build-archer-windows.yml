@@ -24,6 +24,15 @@ jobs:
         run: python -m unittest discover -s tests -v
       - name: Run full simulated laptop acceptance
         run: python archer_laptop_acceptance.py
+      - name: Test each component in isolated Windows process
+        run: python archer_isolated_test.py
+      - name: Upload isolated component results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ARCHER-Isolated-Results
+          path: archer-isolated-report.json
+          if-no-files-found: ignore
       - name: Generate complete feature failure report
         continue-on-error: true
         shell: pwsh
