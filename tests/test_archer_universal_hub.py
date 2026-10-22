@@ -38,3 +38,9 @@ class UniversalHubTests(unittest.TestCase):
         hub.enroll('laptop', 'windows', {'shop'})
         with self.assertRaises(LookupError):
             hub.send('laptop', 'shop', 'missing', 'hello')
+
+    def test_cannot_replace_registered_adapter(self):
+        hub = UniversalHub()
+        hub.register_adapter('secure', lambda *args: 'original')
+        with self.assertRaises(ValueError):
+            hub.register_adapter('secure', lambda *args: 'replacement')
