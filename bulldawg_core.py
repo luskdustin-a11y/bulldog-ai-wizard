@@ -15,16 +15,22 @@ def connect():
     ROOT.mkdir(mode=0o700, parents=True, exist_ok=True)
     if os.name != "nt":
         ROOT.chmod(0o700)
-    db = sqlite3.connect(DB)
+    db = sqlite3.connect(DB, timeout=15)
+    db.execute("PRAGMA busy_timeout=15000")
+    db.execute("PRAGMA journal_mode=WAL")
     db.execute("CREATE TABLE IF NOT EXISTS notes (id INTEGER PRIMARY KEY, department TEXT NOT NULL, text TEXT NOT NULL, created TEXT NOT NULL)")
     db.commit()
+    if os.name != "nt":
+        os.chmod(DB, 0o600)
     return db
 
 def add_note(department, text):
     if department not in DEPARTMENTS:
         raise ValueError("Unknown department")
-    if not text.strip():
+    if not isinstance(text, str) or not text.strip():
         raise ValueError("Empty note")
+    if len(text) > 10000:
+        raise ValueError("Note exceeds 10,000 characters")
     with connect() as db:
         db.execute("INSERT INTO notes(department,text,created) VALUES(?,?,?)",
                    (department, text.strip(), datetime.now(timezone.utc).isoformat()))
