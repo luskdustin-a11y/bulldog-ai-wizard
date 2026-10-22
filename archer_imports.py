@@ -34,9 +34,9 @@ def stage_file(category, source, destination_root):
         sample = raw.decode("utf-8-sig")
         if not list(csv.reader(sample.splitlines())):
             raise ValueError("Empty CSV")
-    elif suffix in (".jpg", ".jpeg") and not raw.startswith(b"\\xff\\xd8\\xff"):
+    elif suffix in (".jpg", ".jpeg") and not raw.startswith(bytes.fromhex("ffd8ff")):
         raise ValueError("Invalid JPEG header")
-    elif suffix == ".png" and not raw.startswith(b"\\x89PNG\\r\\n\\x1a\\n"):
+    elif suffix == ".png" and not raw.startswith(bytes.fromhex("89504e470d0a1a0a")):
         raise ValueError("Invalid PNG header")
     digest = hashlib.sha256(raw).hexdigest()
     folder = Path(destination_root).expanduser().resolve() / category
