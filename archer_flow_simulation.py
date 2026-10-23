@@ -34,14 +34,14 @@ def simulate():
     failure = dict(baseline, windows_runtime="failed", devices="warning")
     flagged = evaluate(failure)
     thermal = decide_thermal(96, 78)
-    repaired = evaluate(dict(baseline))
+    # A failed signal must remain red until a fresh passing check is supplied.\n    repaired = evaluate(dict(baseline))
     checks = {
         "eight_modules_connected": len(healthy) == 8,
         "blue_healthy_flow": all(n.color == "blue" for n in healthy),
         "yellow_warning_detected": any(n.name == "devices" and n.color == "yellow" for n in flagged),
         "red_failure_detected": any(n.name == "windows_runtime" and n.color == "red" for n in flagged),
         "thermal_critical_detected": thermal.request_safe_shutdown and thermal.throttle_ai,
-        "repaired_signal_returns_blue": all(n.color == "blue" for n in repaired),
+        "repaired_signal_returns_blue": all(n.color == "blue" for n in repaired),\n        "unverified_failure_stays_red": any(n.name == "windows_runtime" and n.color == "red" for n in evaluate(failure)),
     }
     return {"simulation_only": True, "passed": sum(checks.values()), "total": len(checks),
             "checks": checks, "healthy": [asdict(n) for n in healthy],
