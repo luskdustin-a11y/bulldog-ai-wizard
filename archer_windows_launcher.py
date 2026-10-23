@@ -59,6 +59,13 @@ def main():
             messagebox.showerror('ARCHER', 'Access denied. Try again later.', parent=root)
             root.destroy()
             return 1
+    from bulldawg_core import DB, ROOT
+    from archer_startup_recovery import startup_report
+    report = startup_report(DB, ROOT / "backups")
+    if report["database"]["state"] == "damaged" or (report["database"]["state"] == "missing" and report["recovery_available"]):
+        messagebox.showerror("ARCHER memory protection", "Memory needs owner-reviewed recovery. No data has been overwritten.", parent=root)
+        root.destroy()
+        return 2
     root.destroy()
     ArcherDashboard().mainloop()
     return 0
