@@ -49,7 +49,7 @@ class ArchieBridge:
             raise ValueError("expected event object")
         event = ValEvent(**data).validate()
         if event.event_id in self.events:
-            if self.events[event.event_id] != data:
+            if {k: v for k, v in self.events[event.event_id].items() if k != "timestamp"} != {k: v for k, v in data.items() if k != "timestamp"}:
                 raise ValueError("event ID reused with different payload")
             return {"event_id": event.event_id, "accepted": True, "duplicate": True}
         self.events[event.event_id] = dict(data)
