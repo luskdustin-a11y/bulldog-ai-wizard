@@ -9,18 +9,16 @@ class OwnerAuthorityTests(unittest.TestCase):
         with self.assertRaises(PermissionError):
             gate.approve(token)
 
-    def test_exact_single_use_permission(self):
+    def test_spoofed_owner_boolean_is_rejected(self):
         gate = OwnerAuthority()
         token = gate.request("repair", {"module": "shop"})
-        gate.approve(token, owner_authenticated=True)
-        self.assertFalse(gate.authorize("repair", {"module": "stocks"}, token).allowed)
-        self.assertTrue(gate.authorize("repair", {"module": "shop"}, token).allowed)
+        with self.assertRaises(PermissionError):
+            gate.approve(token, owner_authenticated=True)
         self.assertFalse(gate.authorize("repair", {"module": "shop"}, token).allowed)
 
-    def test_emergency_stop_revokes_all(self):
+    def test_emergency_stop_revokes_requests(self):
         gate = OwnerAuthority()
         token = gate.request("repair", {"module": "shop"})
-        gate.approve(token, owner_authenticated=True)
         gate.emergency_stop()
         self.assertFalse(gate.authorize("repair", {"module": "shop"}, token).allowed)
         with self.assertRaises(PermissionError):
