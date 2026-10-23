@@ -12,6 +12,15 @@ class R2Supervisor:
         if type(max_retries) is not int or not 0 <= max_retries <= 3:
             raise ValueError("Retry limit must be 0 through 3")
         self.max_retries = max_retries
+        self._halted = False
+
+    def emergency_stop(self):
+        """Latch supervisor shutdown; no in-process API to clear it."""
+        self._halted = True
+
+    @property
+    def halted(self):
+        return self._halted
 
     def assess(self, health=None, backup_directory=None, error_count=None):
         report = check_local_health(health)
@@ -47,15 +56,23 @@ class R2Supervisor:
 
     def recover_transient(self, operation, verify, *, approved=False):
         """Only owner-approved, idempotent callbacks; stop on unverified results."""
+        if self._halted:
+            raise PermissionError("R2 emergency stop is latched")
         if not approved:
             raise PermissionError("Recovery action requires owner approval")
         if not callable(operation) or not callable(verify):
             raise TypeError("Recovery and verification must be callable")
         errors = []
         for attempt in range(self.max_retries + 1):
+            if self._halted:
+                return {"recovered": False, "attempts": attempt,
+                        "safe_mode_required": True, "errors": ["Emergency stop"]}
             try:
                 operation()
-                if verify() is True:
+                if self._halted:
+                    return {"recovered": False, "attempts": attempt + 1,
+                            "safe_mode_required": True, "errors": ["Emergency stop"]}
+                if verify() is True and not self._halted:
                     return {"recovered": True, "attempts": attempt + 1}
                 errors.append("Verification did not pass")
             except Exception as exc:
