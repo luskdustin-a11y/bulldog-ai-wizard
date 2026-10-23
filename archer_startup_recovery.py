@@ -5,6 +5,7 @@ Read-only startup inspection. Never restores, deletes or uploads user data.
 from pathlib import Path
 import json
 import sqlite3
+from contextlib import closing
 from archer_backup import verify
 
 def inspect_database(database):
@@ -12,7 +13,7 @@ def inspect_database(database):
     if not path.exists():
         return {"state": "missing", "safe_to_start": False}
     try:
-        with sqlite3.connect(f"file:{path.as_posix()}?mode=ro", uri=True) as connection:
+        with closing(sqlite3.connect(f"file:{path.as_posix()}?mode=ro", uri=True)) as connection:
             integrity = connection.execute("PRAGMA integrity_check").fetchone()[0]
             schema = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
             if integrity != "ok" or "notes" not in schema:
