@@ -1,5 +1,6 @@
 """Regression checks for startup recovery safety."""
 import sqlite3
+from contextlib import closing
 import tempfile
 import unittest
 from pathlib import Path
@@ -19,7 +20,7 @@ class StartupRecoveryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
             db = root / "good.db"
-            with sqlite3.connect(db) as conn:
+            with closing(sqlite3.connect(db)) as conn:
                 conn.execute("CREATE TABLE notes(id INTEGER PRIMARY KEY, text TEXT)")
                 conn.execute("INSERT INTO notes(text) VALUES ('memory')")
             report = startup_report(db, root / "backups")
@@ -43,7 +44,7 @@ class StartupRecoveryTests(unittest.TestCase):
             backup_dir = root / "backups"
             backup_dir.mkdir()
             db = backup_dir / "archer-valid.sqlite3"
-            with sqlite3.connect(db) as conn:
+            with closing(sqlite3.connect(db)) as conn:
                 conn.execute("CREATE TABLE notes(id INTEGER PRIMARY KEY, text TEXT)")
             report = startup_report(root / "missing.db", backup_dir)
             self.assertTrue(report["recovery_available"])
