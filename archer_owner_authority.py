@@ -41,8 +41,7 @@ class OwnerAuthority:
     def approve(self, token, *, owner_authenticated=False):
         if self._halted:
             raise PermissionError("Emergency stop is active")
-        if owner_authenticated is not True:
-            raise PermissionError("Authenticated owner approval required")
+        # A caller-supplied boolean is not authentication. Only a trusted owner\n        # authentication integration may grant approvals; until then fail closed.\n        raise PermissionError("Owner authentication integration not installed")
         digest = self._pending.pop(token, None)
         if digest is None:
             raise PermissionError("Unknown or already used request")
