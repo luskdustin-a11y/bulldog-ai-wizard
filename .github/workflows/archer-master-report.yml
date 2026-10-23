@@ -1,0 +1,37 @@
+name: ARCHER Master PDF Report
+on:
+  workflow_run:
+    workflows:
+      - Test Offline Core
+      - Build ARCHER Windows Desktop
+      - ARCHER Free Virtual Windows Lab
+    types: [completed]
+  workflow_dispatch:
+permissions:
+  actions: read
+  contents: read
+jobs:
+  master-report:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.head_branch == 'archer-stage4-integration-hardening'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: archer-stage4-integration-hardening
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install PDF generator
+        run: python -m pip install 'reportlab>=4,<5'
+      - name: Generate PDF from actual GitHub run results
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          ARCHER_REPORT_BRANCH: archer-stage4-integration-hardening
+        run: python archer_master_report.py
+      - name: Upload versioned PDF artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: archer-master-report-${{ github.run_id }}
+          path: reports/archer-master-latest.pdf
+          retention-days: 90
