@@ -11,7 +11,13 @@ def main():
     parser.add_argument("--preflight", action="store_true", help="Review reported HP compatibility")
     parser.add_argument("--check-device", action="store_true", help="Read-only checks on this Windows machine")
     parser.add_argument("--thermal-sample", nargs=2, type=float, metavar=("CPU_C", "GPU_C"), help="Evaluate manually supplied CPU/GPU temperatures; no live hardware access")
+    parser.add_argument("--health", action="store_true", help="Read-only local CPU RAM disk and process snapshot")
     args = parser.parse_args()
+    if args.health:
+        import json
+        from archer_windows_health import snapshot
+        print(json.dumps(snapshot(), indent=2))
+        return 0
     if args.thermal_sample is not None:
         import json
         from archer_thermal_advisor import advise_cooling
