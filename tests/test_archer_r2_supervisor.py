@@ -33,6 +33,26 @@ class R2SupervisorTests(unittest.TestCase):
         self.assertTrue(result["safe_mode_required"])
         self.assertEqual(result["attempts"], 2)
 
+    def test_emergency_stop_blocks_repairs(self):
+        supervisor = R2Supervisor()
+        supervisor.emergency_stop()
+        self.assertTrue(supervisor.halted)
+        calls = []
+        with self.assertRaises(PermissionError):
+            supervisor.recover_transient(lambda: calls.append(1), lambda: True, approved=True)
+        self.assertEqual(calls, [])
+
+    def test_stop_during_operation_blocks_success(self):
+        supervisor = R2Supervisor(max_retries=2)
+        calls = []
+        def operation():
+            calls.append(1)
+            supervisor.emergency_stop()
+        result = supervisor.recover_transient(operation, lambda: True, approved=True)
+        self.assertFalse(result["recovered"])
+        self.assertTrue(result["safe_mode_required"])
+        self.assertEqual(len(calls), 1)
+
     def test_invalid_error_count_fails_closed(self):
         with self.assertRaises(ValueError):
             R2Supervisor().assess({}, error_count=-2)
