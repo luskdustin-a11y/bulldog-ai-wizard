@@ -3,6 +3,7 @@ No automatic overwrites or cloud transfer.
 """
 from pathlib import Path
 import json
+import sqlite3
 from datetime import datetime, timezone
 from archer_backup import backup, verify, restore
 
@@ -32,7 +33,7 @@ def recover(source, destination, *, approve=False):
 def status(path):
     try:
         return {"ready": True, "backup": verify(path)}
-    except (OSError, ValueError) as exc:
+    except (OSError, ValueError, sqlite3.DatabaseError) as exc:
         return {"ready": False, "reason": str(exc)}
 
 if __name__ == "__main__":
