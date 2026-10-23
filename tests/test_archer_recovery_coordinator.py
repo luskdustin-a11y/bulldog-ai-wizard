@@ -15,6 +15,7 @@ class RecoveryCoordinatorTests(unittest.TestCase):
             with closing(sqlite3.connect(db)) as conn:
                 conn.execute("CREATE TABLE notes (id INTEGER PRIMARY KEY, department TEXT, text TEXT)")
                 conn.execute("INSERT INTO notes (department,text) VALUES ('Shop AI','test note')")
+                conn.commit()
             # Replace the live database backup source with a disposable fixture.
             class Fixture:
                 def __enter__(self):
