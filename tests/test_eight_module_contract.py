@@ -34,7 +34,7 @@ class EightModuleContractTests(unittest.TestCase):
 
     @staticmethod
     def event(name):
-        return ValEvent("event-" + name, "status", "memory", "ok",
+        return ValEvent("event-" + name, "health", "memory", "healthy",
                         {"owner": name, "sequence": 1}, source="simulation",
                         timestamp="2026-10-23T00:00:00+00:00")
 
