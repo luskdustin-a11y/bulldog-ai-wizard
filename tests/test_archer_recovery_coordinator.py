@@ -4,6 +4,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 import sqlite3
+from contextlib import closing
 import archer_recovery_coordinator as recovery
 
 class RecoveryCoordinatorTests(unittest.TestCase):
@@ -11,7 +12,7 @@ class RecoveryCoordinatorTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             db = root / "source.db"
-            with sqlite3.connect(db) as conn:
+            with closing(sqlite3.connect(db)) as conn:
                 conn.execute("CREATE TABLE notes (id INTEGER PRIMARY KEY, department TEXT, text TEXT)")
                 conn.execute("INSERT INTO notes (department,text) VALUES ('Shop AI','test note')")
             # Replace the live database backup source with a disposable fixture.
