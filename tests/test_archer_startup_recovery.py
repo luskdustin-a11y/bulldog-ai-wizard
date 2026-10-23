@@ -23,6 +23,7 @@ class StartupRecoveryTests(unittest.TestCase):
             with closing(sqlite3.connect(db)) as conn:
                 conn.execute("CREATE TABLE notes(id INTEGER PRIMARY KEY, text TEXT)")
                 conn.execute("INSERT INTO notes(text) VALUES ('memory')")
+                conn.commit()
             report = startup_report(db, root / "backups")
             self.assertEqual(report["database"]["state"], "healthy")
             self.assertEqual(report["database"]["notes"], 1)
