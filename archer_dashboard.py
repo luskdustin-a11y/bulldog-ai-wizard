@@ -6,7 +6,8 @@ from tkinter import messagebox, ttk
 import bulldawg_core as core
 from archer_persona import SYSTEM_NAME, build_system_prompt, ResponseContext
 from archer_brain import respond
-from archer_model import chat, ModelUnavailable
+from archer_model import ModelUnavailable
+from archer_memory_ai import answer_with_memory
 
 class ArcherDashboard(tk.Tk):
     def __init__(self):
@@ -111,7 +112,7 @@ class ArcherDashboard(tk.Tk):
                 if use_ai:
                     prompt = build_system_prompt(ResponseContext(safety_critical=routed.mode == "serious"))
                     try:
-                        answer = chat(message, prompt)
+                        answer = answer_with_memory(message, prompt, project=self.department.get())
                     except ModelUnavailable:
                         answer = routed.text + " Local AI unavailable."
                 else:
