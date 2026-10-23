@@ -3,7 +3,6 @@
 No serial numbers, process command lines, environment variables or network traffic.
 Temperature sensors require a separately approved hardware adapter.
 """
-import os
 import platform
 import shutil
 from pathlib import Path
@@ -31,6 +30,8 @@ def snapshot():
                     key: [entry.current for entry in entries if entry.current is not None]
                     for key, entries in sensors.items()
                 }
+                if not any(report["temperatures_c"].values()):
+                    report["temperatures_c"] = None
         except (AttributeError, OSError, NotImplementedError):
             pass
     if report["temperatures_c"] is None:
