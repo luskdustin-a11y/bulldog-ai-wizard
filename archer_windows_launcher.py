@@ -10,7 +10,13 @@ def main():
     parser.add_argument("--simulate", action="store_true", help="Run eight-department simulated events")
     parser.add_argument("--preflight", action="store_true", help="Review reported HP compatibility")
     parser.add_argument("--check-device", action="store_true", help="Read-only checks on this Windows machine")
+    parser.add_argument("--thermal-sample", nargs=2, type=float, metavar=("CPU_C", "GPU_C"), help="Evaluate manually supplied CPU/GPU temperatures; no live hardware access")
     args = parser.parse_args()
+    if args.thermal_sample is not None:
+        import json
+        from archer_thermal_advisor import advise_cooling
+        print(json.dumps(advise_cooling(*args.thermal_sample), indent=2))
+        return 0
     if args.check_device:
         import json
         print(json.dumps(inspect_local_machine(), indent=2))
