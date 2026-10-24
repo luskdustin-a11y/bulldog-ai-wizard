@@ -39,15 +39,20 @@ class OwnerAuthority:
         return token
 
     def approve(self, token, *, owner_authenticated=False):
+        # Never trust a caller-supplied boolean as proof of owner identity.
+        raise PermissionError("Trusted owner authentication required")
+
+    def approve_with_pin(self, token, pin, gate):
+        """Owner must supply PIN for each approval; no AI-issued boolean accepted."""
         if self._halted:
             raise PermissionError("Emergency stop is active")
-        # A caller-supplied boolean is not authentication. Fail closed until
-        # a trusted owner authentication integration is implemented.
-        raise PermissionError("Owner authentication integration not installed")
-        digest = self._pending.pop(token, None)
-        if digest is None:
+        if token not in self._pending:
             raise PermissionError("Unknown or already used request")
+        if not gate.configured() or not gate.unlock(pin):
+            raise PermissionError("Owner PIN verification failed")
+        digest = self._pending.pop(token)
         self._approved.add((token, digest))
+        gate.lock()
 
     def authorize(self, action, payload, token):
         if self._halted:
