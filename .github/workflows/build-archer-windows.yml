@@ -94,12 +94,46 @@ jobs:
           Expand-Archive ollama-windows-amd64.zip -DestinationPath installer-stage/ollama
           if (!(Test-Path installer-stage/ollama/ollama.exe)) { throw 'Ollama engine missing; release blocked' }
           Get-FileHash ollama-windows-amd64.zip -Algorithm SHA256 | Format-List
-      - name: Require bundled local model before release
+      - name: Download and verify bundled Llama model
         shell: pwsh
         run: |
-          if (!(Test-Path installer-stage/model/manifest.json)) {
-            throw 'Bundled Llama 3.2 model not yet staged and verified; installer release blocked'
+          $env:OLLAMA_HOST = '127.0.0.1:11434'
+          $env:OLLAMA_MODELS = (Join-Path (Get-Location) 'installer-stage/models')
+          New-Item -ItemType Directory -Force -Path $env:OLLAMA_MODELS | Out-Null
+          $engine = (Resolve-Path 'installer-stage/ollama/ollama.exe').Path
+          $process = Start-Process -FilePath $engine -ArgumentList 'serve' -PassThru -WindowStyle Hidden
+          try {
+            $ready = $false
+            for ($i=0; $i -lt 30; $i++) {
+              try { Invoke-RestMethod 'http://127.0.0.1:11434/api/tags' | Out-Null; $ready = $true; break } catch { Start-Sleep -Seconds 2 }
+            }
+            if (!$ready) { throw 'Bundled Ollama server failed to start' }
+            & $engine pull llama3.2
+            if ($LASTEXITCODE -ne 0) { throw 'Llama model download failed' }
+            $models = Invoke-RestMethod 'http://127.0.0.1:11434/api/tags'
+            if (!($models.models | Where-Object { $_.name -like 'llama3.2:*' })) { throw 'Llama 3.2 model not found' }
+            $reply = Invoke-RestMethod -Method Post -Uri 'http://127.0.0.1:11434/api/chat' -ContentType 'application/json' -Body '{"model":"llama3.2","stream":false,"messages":[{"role":"user","content":"Reply with READY"}]}'
+            if ([string]::IsNullOrWhiteSpace($reply.message.content)) { throw 'Bundled model did not answer' }
+            if (!(Test-Path 'installer-stage/models/manifests')) { throw 'Model manifests missing' }
+            if (!(Test-Path 'installer-stage/models/blobs')) { throw 'Model blobs missing' }
+          } finally {
+            Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
           }
+      - name: Compile Archie Light installer
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\\Inno Setup 6\\ISCC.exe"
+          if (!(Test-Path $iscc)) { throw 'Inno Setup compiler unavailable' }
+          & $iscc 'archie-light.iss'
+          if ($LASTEXITCODE -ne 0) { throw 'Installer compilation failed' }
+          if (!(Test-Path 'output/Archie-Light-Setup.exe')) { throw 'Installer missing' }
+          Get-FileHash 'output/Archie-Light-Setup.exe' -Algorithm SHA256
+      - name: Upload installer for review
+        uses: actions/upload-artifact@v4
+        with:
+          name: Archie-Light-Installer-UNVERIFIED
+          path: output/Archie-Light-Setup.exe
+          retention-days: 7
       - name: Verify executable and SHA256
         shell: pwsh
         run: |
