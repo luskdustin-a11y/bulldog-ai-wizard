@@ -86,7 +86,7 @@ class ArcherDashboard(tk.Tk):
         chatpanel.pack(fill="x", pady=(14, 0))
         tk.Label(chatpanel, text="ARCHER chat", fg="white", bg="#101722",
                  font=("Segoe UI", 14, "bold")).pack(anchor="w")
-        tk.Checkbutton(chatpanel, text="Use local Ollama (requires separate installation)",
+        tk.Checkbutton(chatpanel, text="Use local AI (bundled with Archie Light)",
                        variable=self.ai_enabled, fg="white", bg="#101722",
                        selectcolor="#34465c", activebackground="#101722").pack(anchor="w")
         self.chat_input = tk.Entry(chatpanel, font=("Segoe UI", 11))
