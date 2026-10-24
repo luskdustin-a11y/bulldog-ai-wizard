@@ -51,7 +51,7 @@ jobs:
           path: archer-isolated-report.json
           if-no-files-found: ignore
       - name: Generate complete feature failure report
-        continue-on-error: true
+        # Release gate: an incomplete integration must fail the build.
         shell: pwsh
         run: |
           python archer_full_integration.py
