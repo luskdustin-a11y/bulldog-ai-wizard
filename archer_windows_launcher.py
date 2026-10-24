@@ -9,14 +9,14 @@ def prepare_first_run_memory(database, backup_directory):
     """Initialize only a genuinely new database; never overwrite existing memory."""
     from pathlib import Path
     from archer_startup_recovery import startup_report
-    from bulldawg_core import connect
+    from bulldawg_core import managed_connection
     database = Path(database)
     report = startup_report(database, backup_directory)
     if report["database"]["state"] != "missing" or report["backups"]:
         return report
     if database.is_symlink() or database.exists():
         return report
-    with connect() as connection:
+    with managed_connection() as connection:
         connection.execute("PRAGMA integrity_check").fetchone()
     return startup_report(database, backup_directory)
 
