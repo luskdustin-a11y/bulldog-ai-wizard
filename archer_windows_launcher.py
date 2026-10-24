@@ -5,6 +5,10 @@ from archer_simulator import run_simulation
 from archer_install_preflight import simulate_install
 from archer_runtime_check import inspect_local_machine
 
+def memory_allows_launch(report):
+    """Only launch when startup inspection explicitly approves the database."""
+    return report.get("database", {}).get("safe_to_start") is True
+
 def main():
     parser = argparse.ArgumentParser(description="ARCHER Windows desktop and simulator")
     parser.add_argument("--simulate", action="store_true", help="Run eight-department simulated events")
@@ -74,7 +78,7 @@ def main():
     from bulldawg_core import DB, ROOT
     from archer_startup_recovery import startup_report
     report = startup_report(DB, ROOT / "backups")
-    if not report["database"]["safe_to_start"]:
+    if not memory_allows_launch(report):
         messagebox.showerror("ARCHER memory protection", "Memory needs owner-reviewed recovery. No data has been overwritten.", parent=root)
         root.destroy()
         return 2
