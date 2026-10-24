@@ -104,7 +104,12 @@ def main():
         root.destroy()
         return 2
     root.destroy()
-    ArcherDashboard().mainloop()
+    from archer_bundled_ai import start_bundled_ai
+    ai_ready = start_bundled_ai()
+    dashboard = ArcherDashboard()
+    dashboard.ai_enabled.set(ai_ready)
+    dashboard.status.set("LOCAL AI READY • No sync" if ai_ready else "LOCAL MODE • AI unavailable • No sync")
+    dashboard.mainloop()
     return 0
 
 if __name__ == "__main__":
