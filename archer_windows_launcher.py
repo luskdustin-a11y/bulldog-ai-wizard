@@ -16,8 +16,15 @@ def main():
     parser.add_argument("--check-device", action="store_true", help="Read-only checks on this Windows machine")
     parser.add_argument("--thermal-sample", nargs=2, type=float, metavar=("CPU_C", "GPU_C"), help="Evaluate manually supplied CPU/GPU temperatures; no live hardware access")
     parser.add_argument("--health", action="store_true", help="Read-only local CPU RAM disk and process snapshot")
+    parser.add_argument("--ai-status", action="store_true", help="Check local AI engine and model")
     parser.add_argument("--ai-status", action="store_true", help="Check local Ollama and model availability without downloads")
     args = parser.parse_args()
+    if args.ai_status:
+        import json
+        from archer_model import local_model_status
+        result = local_model_status()
+        print(json.dumps(result, indent=2))
+        return 0 if result["ready"] else 1
     if args.ai_status:
         import json
         from archer_model import local_model_status
