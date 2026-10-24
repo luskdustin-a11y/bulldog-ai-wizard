@@ -5,6 +5,9 @@ on:
       - 'rg_coding_department.py'
       - 'test_rg_coding_department.py'
       - 'archer_model.py'
+      - 'rg_repair_staging.py'
+      - 'rg_coding_api.py'
+      - 'test_rg_coding_api.py'
       - '.github/workflows/rg-coding-tests.yml'
   workflow_dispatch:
 permissions:
@@ -19,6 +22,6 @@ jobs:
         with:
           python-version: '3.11'
       - name: Compile modules
-        run: python -m py_compile rg_coding_department.py test_rg_coding_department.py archer_model.py
+        run: python -m py_compile rg_coding_department.py test_rg_coding_department.py archer_model.py rg_repair_staging.py rg_coding_api.py test_rg_coding_api.py
       - name: Run tests
-        run: python -m unittest -v test_rg_coding_department
+        run: python -m unittest -v test_rg_coding_department test_rg_coding_api
