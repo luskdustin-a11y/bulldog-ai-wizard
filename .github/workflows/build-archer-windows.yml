@@ -82,6 +82,24 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Packaged simulator failed' }
           $report = Get-Content simulation-output.json -Raw | ConvertFrom-Json
           if ($report.passed -ne 8 -or $report.total -ne 8) { throw 'Packaged simulation mismatch' }
+      - name: Prepare Archie Light installer staging
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path installer-stage | Out-Null
+          Copy-Item dist/ARCHER.exe installer-stage/ARCHER.exe
+          $release = Invoke-RestMethod 'https://api.github.com/repos/ollama/ollama/releases/latest'
+          $asset = $release.assets | Where-Object { $_.name -eq 'ollama-windows-amd64.zip' } | Select-Object -First 1
+          if (!$asset) { throw 'Official Ollama standalone Windows asset unavailable; release blocked' }
+          Invoke-WebRequest $asset.browser_download_url -OutFile ollama-windows-amd64.zip
+          Expand-Archive ollama-windows-amd64.zip -DestinationPath installer-stage/ollama
+          if (!(Test-Path installer-stage/ollama/ollama.exe)) { throw 'Ollama engine missing; release blocked' }
+          Get-FileHash ollama-windows-amd64.zip -Algorithm SHA256 | Format-List
+      - name: Require bundled local model before release
+        shell: pwsh
+        run: |
+          if (!(Test-Path installer-stage/model/manifest.json)) {
+            throw 'Bundled Llama 3.2 model not yet staged and verified; installer release blocked'
+          }
       - name: Verify executable and SHA256
         shell: pwsh
         run: |
