@@ -53,7 +53,7 @@ def chat(message, system_prompt, model="llama3.2", base_url="http://127.0.0.1:11
     ]}).encode("utf-8")
     req = request.Request(endpoint, data=payload, headers={"Content-Type": "application/json"}, method="POST")
     try:
-        with request.urlopen(req, timeout=timeout) as response:
+        with _LOCAL_OPENER.open(req, timeout=timeout) as response:
             if response.status != 200:
                 raise ModelUnavailable(f"Local model HTTP {response.status}")
             result = json.loads(response.read(2_000_000))
