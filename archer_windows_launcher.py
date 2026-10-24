@@ -5,6 +5,21 @@ from archer_simulator import run_simulation
 from archer_install_preflight import simulate_install
 from archer_runtime_check import inspect_local_machine
 
+def prepare_first_run_memory(database, backup_directory):
+    """Initialize only a genuinely new database; never overwrite existing memory."""
+    from pathlib import Path
+    from archer_startup_recovery import startup_report
+    from bulldawg_core import connect
+    database = Path(database)
+    report = startup_report(database, backup_directory)
+    if report["database"]["state"] != "missing" or report["backups"]:
+        return report
+    if database.is_symlink() or database.exists():
+        return report
+    with connect() as connection:
+        connection.execute("PRAGMA integrity_check").fetchone()
+    return startup_report(database, backup_directory)
+
 def memory_allows_launch(report):
     """Only launch when startup inspection explicitly approves the database."""
     return report.get("database", {}).get("safe_to_start") is True
@@ -83,8 +98,7 @@ def main():
             root.destroy()
             return 1
     from bulldawg_core import DB, ROOT
-    from archer_startup_recovery import startup_report
-    report = startup_report(DB, ROOT / "backups")
+    report = prepare_first_run_memory(DB, ROOT / "backups")
     if not memory_allows_launch(report):
         messagebox.showerror("ARCHER memory protection", "Memory needs owner-reviewed recovery. No data has been overwritten.", parent=root)
         root.destroy()
