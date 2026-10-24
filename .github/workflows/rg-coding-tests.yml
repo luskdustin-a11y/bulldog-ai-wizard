@@ -1,0 +1,27 @@
+name: RG Coding Department Tests
+on:
+  pull_request:
+    paths:
+      - 'rg_coding_department.py'
+      - 'test_rg_coding_department.py'
+      - 'archer_model.py'
+      - 'rg_repair_staging.py'
+      - 'rg_coding_api.py'
+      - 'test_rg_coding_api.py'
+      - '.github/workflows/rg-coding-tests.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile modules
+        run: python -m py_compile rg_coding_department.py test_rg_coding_department.py archer_model.py rg_repair_staging.py rg_coding_api.py test_rg_coding_api.py
+      - name: Run tests
+        run: python -m unittest -v test_rg_coding_department test_rg_coding_api
