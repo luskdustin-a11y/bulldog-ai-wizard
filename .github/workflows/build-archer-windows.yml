@@ -1,7 +1,7 @@
 name: Build ARCHER Windows Desktop
 on:
   pull_request:
-    branches: [main]
+    branches: [main, archer-stage4-integration-hardening, fix/rg6-release-gate]
   workflow_dispatch:
   push:
     branches: [main]
@@ -50,12 +50,14 @@ jobs:
           name: ARCHER-Isolated-Results
           path: archer-isolated-report.json
           if-no-files-found: ignore
-      - name: Generate complete feature failure report
-        continue-on-error: true
+      - name: Generate complete feature inventory (unfinished integrations are reported)
         shell: pwsh
         run: |
           python archer_full_integration.py
           if (!(Test-Path archer-integration-report.json)) { throw "Integration report missing" }
+          $report = Get-Content archer-integration-report.json -Raw | ConvertFrom-Json
+          if ($report.total -lt 15 -or $report.passed -gt $report.total) { throw 'Invalid feature inventory' }
+          Write-Host "Feature inventory: $($report.passed)/$($report.total) complete; not a production acceptance test"
       - name: Upload full integration report
         if: always()
         uses: actions/upload-artifact@v4
@@ -67,6 +69,8 @@ jobs:
         run: python archer_windows_launcher.py --preflight
       - name: Run eight-department simulator
         run: python archer_windows_launcher.py --simulate
+      - name: Verify release-critical tests (fail closed)
+        run: python -m unittest discover -s tests -p 'test_archer_stage4_integration.py' -v
       - name: Install PyInstaller
         run: python -m pip install "pyinstaller>=6,<7"
       - name: Build ARCHER executable
@@ -78,6 +82,61 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Packaged simulator failed' }
           $report = Get-Content simulation-output.json -Raw | ConvertFrom-Json
           if ($report.passed -ne 8 -or $report.total -ne 8) { throw 'Packaged simulation mismatch' }
+      - name: Prepare Archie Light installer staging
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path installer-stage | Out-Null
+          Copy-Item dist/ARCHER.exe installer-stage/ARCHER.exe
+          $release = Invoke-RestMethod 'https://api.github.com/repos/ollama/ollama/releases/latest'
+          $asset = $release.assets | Where-Object { $_.name -eq 'ollama-windows-amd64.zip' } | Select-Object -First 1
+          if (!$asset) { throw 'Official Ollama standalone Windows asset unavailable; release blocked' }
+          Invoke-WebRequest $asset.browser_download_url -OutFile ollama-windows-amd64.zip
+          Expand-Archive ollama-windows-amd64.zip -DestinationPath installer-stage/ollama
+          if (!(Test-Path installer-stage/ollama/ollama.exe)) { throw 'Ollama engine missing; release blocked' }
+          Get-FileHash ollama-windows-amd64.zip -Algorithm SHA256 | Format-List
+      - name: Download and verify bundled Llama model
+        shell: pwsh
+        run: |
+          $env:OLLAMA_HOST = '127.0.0.1:11434'
+          $env:OLLAMA_MODELS = (Join-Path (Get-Location) 'installer-stage/models')
+          New-Item -ItemType Directory -Force -Path $env:OLLAMA_MODELS | Out-Null
+          $engine = (Resolve-Path 'installer-stage/ollama/ollama.exe').Path
+          $process = Start-Process -FilePath $engine -ArgumentList 'serve' -PassThru -WindowStyle Hidden
+          try {
+            $ready = $false
+            for ($i=0; $i -lt 30; $i++) {
+              try { Invoke-RestMethod 'http://127.0.0.1:11434/api/tags' | Out-Null; $ready = $true; break } catch { Start-Sleep -Seconds 2 }
+            }
+            if (!$ready) { throw 'Bundled Ollama server failed to start' }
+            & $engine pull llama3.2
+            if ($LASTEXITCODE -ne 0) { throw 'Llama model download failed' }
+            $models = Invoke-RestMethod 'http://127.0.0.1:11434/api/tags'
+            if (!($models.models | Where-Object { $_.name -like 'llama3.2:*' })) { throw 'Llama 3.2 model not found' }
+            $reply = Invoke-RestMethod -Method Post -Uri 'http://127.0.0.1:11434/api/chat' -ContentType 'application/json' -Body '{"model":"llama3.2","stream":false,"messages":[{"role":"user","content":"Reply with READY"}]}'
+            if ([string]::IsNullOrWhiteSpace($reply.message.content)) { throw 'Bundled model did not answer' }
+            if (!(Test-Path 'installer-stage/models/manifests')) { throw 'Model manifests missing' }
+            if (!(Test-Path 'installer-stage/models/blobs')) { throw 'Model blobs missing' }
+          } finally {
+            Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+          }
+      - name: Compile Archie Light installer
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\\Inno Setup 6\\ISCC.exe"
+          if (!(Test-Path $iscc)) { throw 'Inno Setup compiler unavailable' }
+          & $iscc 'archie-light.iss'
+          if ($LASTEXITCODE -ne 0) { throw 'Installer compilation failed' }
+          if (!(Test-Path 'output/Archie-Light-Setup.exe')) { throw 'Installer missing' }
+          Get-FileHash 'output/Archie-Light-Setup.exe' -Algorithm SHA256
+      - name: Real Windows installation and uninstall smoke test
+        shell: pwsh
+        run: ./tests/windows_install_uninstall.ps1
+      - name: Upload installer for review
+        uses: actions/upload-artifact@v4
+        with:
+          name: Archie-Light-Installer-UNVERIFIED
+          path: output/Archie-Light-Setup.exe
+          retention-days: 7
       - name: Verify executable and SHA256
         shell: pwsh
         run: |

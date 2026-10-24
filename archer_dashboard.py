@@ -86,7 +86,7 @@ class ArcherDashboard(tk.Tk):
         chatpanel.pack(fill="x", pady=(14, 0))
         tk.Label(chatpanel, text="ARCHER chat", fg="white", bg="#101722",
                  font=("Segoe UI", 14, "bold")).pack(anchor="w")
-        tk.Checkbutton(chatpanel, text="Use local Ollama (requires separate installation)",
+        tk.Checkbutton(chatpanel, text="Use local AI (bundled with Archie Light)",
                        variable=self.ai_enabled, fg="white", bg="#101722",
                        selectcolor="#34465c", activebackground="#101722").pack(anchor="w")
         self.chat_input = tk.Entry(chatpanel, font=("Segoe UI", 11))
@@ -106,13 +106,14 @@ class ArcherDashboard(tk.Tk):
         self.ask_button.configure(state="disabled")
         self.chat_reply.configure(text="ARCHER is processing...")
         use_ai = self.ai_enabled.get()
+        selected_department = self.department.get()
         def worker():
             try:
                 routed = respond(message)
                 if use_ai:
                     prompt = build_system_prompt(ResponseContext(safety_critical=routed.mode == "serious"))
                     try:
-                        answer = answer_with_memory(message, prompt, project=self.department.get())
+                        answer = answer_with_memory(message, prompt, project=selected_department)
                     except ModelUnavailable:
                         answer = routed.text + " Local AI unavailable."
                 else:

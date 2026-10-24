@@ -11,7 +11,60 @@ import archer_windows_launcher
 from archer_pin import PinGate
 
 
+class LocalAISecurityTests(unittest.TestCase):
+    def test_external_hosts_rejected(self):
+        from archer_model import _local_url
+        for url in ("https://example.com", "http://example.com", "http://127.0.0.1.evil.test:11434", "http://user:pass@localhost:11434"):
+            with self.subTest(url=url), self.assertRaises(ValueError):
+                _local_url(url)
+
+    def test_redirects_disabled_and_proxy_disabled(self):
+        from urllib import request
+        from archer_model import _LOCAL_OPENER, _NoRedirect
+        self.assertTrue(any(isinstance(handler, _NoRedirect) for handler in _LOCAL_OPENER.handlers))
+        proxies = [handler for handler in _LOCAL_OPENER.handlers if isinstance(handler, request.ProxyHandler)]
+        self.assertTrue(all(handler.proxies == {} for handler in proxies))
+        handler = _NoRedirect()
+        self.assertIsNone(handler.redirect_request(None, None, 302, "Found", {}, "https://example.com"))
+
 class WindowsLauncherIntegrationTests(unittest.TestCase):
+    def test_ai_status_reports_missing_model_without_launching_gui(self):
+        with patch("archer_model.local_model_status", return_value={"ready": False, "server_running": False, "model_installed": False, "model": "llama3.2"}):
+            status, report = self.invoke("--ai-status")
+        self.assertEqual(status, 1)
+        self.assertFalse(report["ready"])
+
+    def test_ai_status_reports_missing_model(self):
+        with patch("archer_model.local_model_status", return_value={"ready": False, "server_running": False, "model_installed": False, "model": "llama3.2"}):
+            status, report = self.invoke("--ai-status")
+        self.assertEqual(status, 1)
+        self.assertFalse(report["ready"])
+
+    def test_first_run_initializes_new_database_without_overwriting_existing(self):
+        import bulldawg_core as core
+        from archer_startup_recovery import startup_report
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            db = root / "core.db"
+            with patch.object(core, "ROOT", root), patch.object(core, "DB", db):
+                report = archer_windows_launcher.prepare_first_run_memory(db, root / "backups")
+                self.assertTrue(report["database"]["safe_to_start"])
+                self.assertTrue(db.exists())
+                import sqlite3
+                # Explicitly close any SQLite connection before replacing its file on Windows.
+                sqlite3.connect(str(db)).close()
+                db.write_bytes(b"not a database")
+                damaged = archer_windows_launcher.prepare_first_run_memory(db, root / "backups")
+                self.assertFalse(damaged["database"]["safe_to_start"])
+                self.assertEqual(db.read_bytes(), b"not a database")
+
+    def test_memory_gate_fails_closed(self):
+        allowed = archer_windows_launcher.memory_allows_launch
+        self.assertFalse(allowed({}))
+        self.assertFalse(allowed({"database": {"state": "missing", "safe_to_start": False}}))
+        self.assertFalse(allowed({"database": {"state": "damaged", "safe_to_start": False}}))
+        self.assertTrue(allowed({"database": {"state": "healthy", "safe_to_start": True}}))
+
     def invoke(self, flag):
         stream = io.StringIO()
         with patch("sys.argv", ["ARCHER.exe", flag]), contextlib.redirect_stdout(stream):
