@@ -1,7 +1,7 @@
 name: Build ARCHER Windows Desktop
 on:
   pull_request:
-    branches: [main]
+    branches: [main, archer-stage4-integration-hardening, fix/rg6-release-gate]
   workflow_dispatch:
   push:
     branches: [main]
