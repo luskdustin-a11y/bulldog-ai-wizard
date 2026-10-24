@@ -74,7 +74,7 @@ def main():
     from bulldawg_core import DB, ROOT
     from archer_startup_recovery import startup_report
     report = startup_report(DB, ROOT / "backups")
-    if report["database"]["state"] == "damaged" or (report["database"]["state"] == "missing" and report["recovery_available"]):
+    if not report["database"]["safe_to_start"]:
         messagebox.showerror("ARCHER memory protection", "Memory needs owner-reviewed recovery. No data has been overwritten.", parent=root)
         root.destroy()
         return 2
