@@ -41,11 +41,9 @@ class OwnerAuthority:
     def approve(self, token, *, owner_authenticated=False):
         if self._halted:
             raise PermissionError("Emergency stop is active")
-        # A caller-supplied boolean is not authentication. Only a trusted owner\n        # authentication integration may grant approvals; until then fail closed.\n        raise PermissionError("Owner authentication integration not installed")
-        digest = self._pending.pop(token, None)
-        if digest is None:
-            raise PermissionError("Unknown or already used request")
-        self._approved.add((token, digest))
+        # A caller-supplied boolean is not authentication. Approval stays
+        # disabled until a trusted owner authentication integration is installed.
+        raise PermissionError("Owner authentication integration not installed")
 
     def authorize(self, action, payload, token):
         if self._halted:
@@ -65,3 +63,4 @@ class OwnerAuthority:
     @property
     def halted(self):
         return self._halted
+
