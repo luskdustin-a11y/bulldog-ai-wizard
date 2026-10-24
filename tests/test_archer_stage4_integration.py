@@ -12,6 +12,13 @@ from archer_pin import PinGate
 
 
 class WindowsLauncherIntegrationTests(unittest.TestCase):
+    def test_memory_gate_fails_closed(self):
+        allowed = archer_windows_launcher.memory_allows_launch
+        self.assertFalse(allowed({}))
+        self.assertFalse(allowed({"database": {"state": "missing", "safe_to_start": False}}))
+        self.assertFalse(allowed({"database": {"state": "damaged", "safe_to_start": False}}))
+        self.assertTrue(allowed({"database": {"state": "healthy", "safe_to_start": True}}))
+
     def invoke(self, flag):
         stream = io.StringIO()
         with patch("sys.argv", ["ARCHER.exe", flag]), contextlib.redirect_stdout(stream):
