@@ -24,6 +24,21 @@ class WindowsLauncherIntegrationTests(unittest.TestCase):
         self.assertEqual(status, 1)
         self.assertFalse(report["ready"])
 
+    def test_first_run_initializes_new_database_without_overwriting_existing(self):
+        import bulldawg_core as core
+        from archer_startup_recovery import startup_report
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            db = root / "core.db"
+            with patch.object(core, "ROOT", root), patch.object(core, "DB", db):
+                report = archer_windows_launcher.prepare_first_run_memory(db, root / "backups")
+                self.assertTrue(report["database"]["safe_to_start"])
+                self.assertTrue(db.exists())
+                db.write_bytes(b"not a database")
+                damaged = archer_windows_launcher.prepare_first_run_memory(db, root / "backups")
+                self.assertFalse(damaged["database"]["safe_to_start"])
+                self.assertEqual(db.read_bytes(), b"not a database")
+
     def test_memory_gate_fails_closed(self):
         allowed = archer_windows_launcher.memory_allows_launch
         self.assertFalse(allowed({}))
