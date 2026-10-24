@@ -5,6 +5,12 @@ separately; this module does not install or start it.
 """
 import json
 from urllib import request, error
+
+class _NoRedirect(request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+_LOCAL_OPENER = request.build_opener(_NoRedirect, request.ProxyHandler({}))
 from urllib.parse import urlsplit
 
 def local_model_status(model="llama3.2", base_url="http://127.0.0.1:11434", timeout=3):
@@ -12,7 +18,7 @@ def local_model_status(model="llama3.2", base_url="http://127.0.0.1:11434", time
     endpoint = _local_url(base_url) + "/api/tags"
     try:
         req = request.Request(endpoint, method="GET")
-        with request.urlopen(req, timeout=timeout) as response:
+        with _LOCAL_OPENER.open(req, timeout=timeout) as response:
             if response.status != 200:
                 raise ValueError("Unexpected local server response")
             payload = json.loads(response.read(1024 * 1024))
