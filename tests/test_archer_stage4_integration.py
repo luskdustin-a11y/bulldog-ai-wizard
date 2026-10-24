@@ -18,6 +18,12 @@ class WindowsLauncherIntegrationTests(unittest.TestCase):
         self.assertEqual(status, 1)
         self.assertFalse(report["ready"])
 
+    def test_ai_status_reports_missing_model(self):
+        with patch("archer_model.local_model_status", return_value={"ready": False, "server_running": False, "model_installed": False, "model": "llama3.2"}):
+            status, report = self.invoke("--ai-status")
+        self.assertEqual(status, 1)
+        self.assertFalse(report["ready"])
+
     def test_memory_gate_fails_closed(self):
         allowed = archer_windows_launcher.memory_allows_launch
         self.assertFalse(allowed({}))
