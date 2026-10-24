@@ -11,6 +11,23 @@ import archer_windows_launcher
 from archer_pin import PinGate
 
 
+class LocalAISecurityTests(unittest.TestCase):
+    def test_external_hosts_rejected(self):
+        from archer_model import _local_url
+        for url in ("https://example.com", "http://example.com", "http://127.0.0.1.evil.test:11434", "http://user:pass@localhost:11434"):
+            with self.subTest(url=url), self.assertRaises(ValueError):
+                _local_url(url)
+
+    def test_redirects_disabled_and_proxy_disabled(self):
+        from urllib import request
+        from archer_model import _LOCAL_OPENER, _NoRedirect
+        self.assertTrue(any(isinstance(handler, _NoRedirect) for handler in _LOCAL_OPENER.handlers))
+        proxies = [handler for handler in _LOCAL_OPENER.handlers if isinstance(handler, request.ProxyHandler)]
+        self.assertEqual(len(proxies), 1)
+        self.assertEqual(proxies[0].proxies, {})
+        handler = _NoRedirect()
+        self.assertIsNone(handler.redirect_request(None, None, 302, "Found", {}, "https://example.com"))
+
 class WindowsLauncherIntegrationTests(unittest.TestCase):
     def test_ai_status_reports_missing_model_without_launching_gui(self):
         with patch("archer_model.local_model_status", return_value={"ready": False, "server_running": False, "model_installed": False, "model": "llama3.2"}):
