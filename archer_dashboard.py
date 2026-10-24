@@ -106,13 +106,14 @@ class ArcherDashboard(tk.Tk):
         self.ask_button.configure(state="disabled")
         self.chat_reply.configure(text="ARCHER is processing...")
         use_ai = self.ai_enabled.get()
+        selected_department = self.department.get()
         def worker():
             try:
                 routed = respond(message)
                 if use_ai:
                     prompt = build_system_prompt(ResponseContext(safety_critical=routed.mode == "serious"))
                     try:
-                        answer = answer_with_memory(message, prompt, project=self.department.get())
+                        answer = answer_with_memory(message, prompt, project=selected_department)
                     except ModelUnavailable:
                         answer = routed.text + " Local AI unavailable."
                 else:
