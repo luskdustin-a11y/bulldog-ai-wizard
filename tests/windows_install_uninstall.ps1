@@ -10,8 +10,16 @@ $exe = Join-Path $target 'ARCHER.exe'
 $ollama = Join-Path $target 'ollama\ollama.exe'
 if (!(Test-Path $exe)) { throw 'Installed Archie executable missing' }
 if (!(Test-Path $ollama)) { throw 'Installed Ollama executable missing' }
+$modelRoot = Join-Path $env:ProgramData 'BulldawgAI\models'
+if (!(Test-Path (Join-Path $modelRoot 'manifests'))) { throw 'Installed Llama model manifests missing' }
+if (!(Test-Path (Join-Path $modelRoot 'blobs'))) { throw 'Installed Llama model blobs missing' }
+$ai = & $exe --ai-status | ConvertFrom-Json
+if ($ai.ready -ne $false -and $ai.ready -ne $true) { throw 'Invalid local AI status response' }
 $sim = & $exe --simulate | ConvertFrom-Json
 if ($LASTEXITCODE -ne 0 -or $sim.passed -ne 8 -or $sim.total -ne 8) { throw 'Installed Archie simulator failed' }
+$upgrade = Start-Process -FilePath $installer -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',"/DIR=$target") -Wait -PassThru
+if ($upgrade.ExitCode -ne 0) { throw "Upgrade/reinstall failed: $($upgrade.ExitCode)" }
+if (!(Test-Path $exe)) { throw 'Archie missing after upgrade' }
 $uninstaller = Join-Path $target 'unins000.exe'
 if (!(Test-Path $uninstaller)) { throw 'Uninstaller missing' }
 $remove = Start-Process -FilePath $uninstaller -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -PassThru
