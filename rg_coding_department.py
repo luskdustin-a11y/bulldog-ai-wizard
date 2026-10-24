@@ -6,7 +6,7 @@ import re
 from pathlib import Path
 from archer_model import chat
 
-MAX_FILE_BYTES = 100_000
+MAX_FILE_BYTES = 12_000
 MAX_OUTPUT = 120_000
 BLOCKED = {".git", ".env", "secrets", "credentials", "__pycache__", "venv", ".venv"}
 SYSTEM = """You are RG's coding assistant. Return ONLY a JSON object with keys
@@ -38,6 +38,8 @@ def propose_repair(root, relative, problem, model="llama3.2"):
     source_file = _safe_file(root, relative)
     original = source_file.read_text(encoding="utf-8")
     prompt = json.dumps({"path": relative, "problem": problem, "original_code": original})
+    if len(prompt) > 20_000:
+        raise RepairRejected("Source and instructions exceed local model input limit")
     response = chat(prompt, SYSTEM, model=model)
     if len(response) > MAX_OUTPUT:
         raise RepairRejected("Model response too large")
