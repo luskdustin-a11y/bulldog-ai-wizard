@@ -1,0 +1,36 @@
+name: ARCHER Million Simulation Gate
+on:
+  push:
+    branches: [archer-stage4-integration-hardening]
+    paths:
+      - '.github/workflows/archer-million-simulation.yml'
+  workflow_dispatch:
+    inputs:
+      iterations:
+        description: "Number of independent simulation scenarios (default 1000000)"
+        required: true
+        default: "1000000"
+permissions:
+  contents: read
+jobs:
+  million-simulations:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Verify baseline unit and integration tests
+        run: python -m unittest discover -s tests -v
+      - name: Run million-scenario deterministic simulator
+        env:
+          SIM_ITERATIONS: ${{ inputs.iterations || '1000000' }}
+        run: python tests/archer_million_scenarios.py
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: archer-million-simulation-report
+          path: archer-million-report.json
+          if-no-files-found: ignore
