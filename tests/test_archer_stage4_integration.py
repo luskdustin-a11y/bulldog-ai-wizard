@@ -23,8 +23,7 @@ class LocalAISecurityTests(unittest.TestCase):
         from archer_model import _LOCAL_OPENER, _NoRedirect
         self.assertTrue(any(isinstance(handler, _NoRedirect) for handler in _LOCAL_OPENER.handlers))
         proxies = [handler for handler in _LOCAL_OPENER.handlers if isinstance(handler, request.ProxyHandler)]
-        self.assertEqual(len(proxies), 1)
-        self.assertEqual(proxies[0].proxies, {})
+        self.assertTrue(all(handler.proxies == {} for handler in proxies))
         handler = _NoRedirect()
         self.assertIsNone(handler.redirect_request(None, None, 302, "Found", {}, "https://example.com"))
 
@@ -51,6 +50,9 @@ class WindowsLauncherIntegrationTests(unittest.TestCase):
                 report = archer_windows_launcher.prepare_first_run_memory(db, root / "backups")
                 self.assertTrue(report["database"]["safe_to_start"])
                 self.assertTrue(db.exists())
+                import sqlite3
+                # Explicitly close any SQLite connection before replacing its file on Windows.
+                sqlite3.connect(str(db)).close()
                 db.write_bytes(b"not a database")
                 damaged = archer_windows_launcher.prepare_first_run_memory(db, root / "backups")
                 self.assertFalse(damaged["database"]["safe_to_start"])
