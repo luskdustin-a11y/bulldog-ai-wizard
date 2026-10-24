@@ -128,6 +128,9 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Installer compilation failed' }
           if (!(Test-Path 'output/Archie-Light-Setup.exe')) { throw 'Installer missing' }
           Get-FileHash 'output/Archie-Light-Setup.exe' -Algorithm SHA256
+      - name: Real Windows installation and uninstall smoke test
+        shell: pwsh
+        run: ./tests/windows_install_uninstall.ps1
       - name: Upload installer for review
         uses: actions/upload-artifact@v4
         with:
