@@ -3,6 +3,7 @@ import re
 from dataclasses import dataclass
 import bulldawg_core as core
 from archer_persona import build_system_prompt, ResponseContext
+from archer_model import chat
 
 KEYWORDS = {
     "Shop AI": ("repair", "engine", "diagnostic", "transmission", "mechanic", "parts"),
@@ -29,7 +30,7 @@ def route(message: str) -> str:
     best = max(scores, key=scores.get)
     return best if scores[best] else "Supervisor"
 
-def respond(message: str) -> Reply:
+def respond(message: str, *, use_local_ai=False) -> Reply:
     if not message.strip():
         raise ValueError("Message required")
     dept = route(message)
@@ -39,6 +40,11 @@ def respond(message: str) -> Reply:
     if message.strip().lower() in ("health", "system health", "status"):
         data = core.health()
         return Reply("Supervisor", f'Local core: {data["status"]}; notes: {data["notes"]}; AI model connected: no.', "serious")
+    if use_local_ai:
+        system = build_system_prompt(ResponseContext(safety_critical=serious))
+        system += ("\nAssigned department: " + dept +
+                   ". Information only. Never claim actions were executed or approved.")
+        return Reply(dept, chat(message, system), "local_ai")
     return Reply(dept, f'Routing this to {dept}. I can save local notes now, but live {dept} tools and an AI model are not connected yet.', "serious" if serious else "normal")
 
 def remember(department: str, text: str) -> None:
