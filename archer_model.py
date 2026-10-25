@@ -4,8 +4,9 @@ Uses Python standard library only. Local Ollama must be installed and running
 separately; this module does not install or start it.
 """
 import json
-from urllib import request, error
+from http.client import HTTPException
 from urllib.parse import urlsplit
+from archer_platform import http_response
 
 class ModelUnavailable(RuntimeError):
     pass
@@ -21,7 +22,7 @@ def _local_url(base_url):
 def chat(message, system_prompt, model="llama3.2", base_url="http://127.0.0.1:11434", timeout=30):
     if not isinstance(message, str) or not message.strip() or len(message) > 20000:
         raise ValueError("Message must contain 1–20,000 characters")
-    if not isinstance(system_prompt, str) or not system_prompt:
+    if not isinstance(system_prompt, str) or not system_prompt or len(system_prompt) > 200000:
         raise ValueError("System prompt required")
     if not isinstance(model, str) or not model.strip() or len(model) > 100:
         raise ValueError("Model name required")
@@ -30,15 +31,22 @@ def chat(message, system_prompt, model="llama3.2", base_url="http://127.0.0.1:11
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": message}
     ]}).encode("utf-8")
-    req = request.Request(endpoint, data=payload, headers={"Content-Type": "application/json"}, method="POST")
     try:
-        with request.urlopen(req, timeout=timeout) as response:
+        with http_response(endpoint, method='POST', data=payload,
+                           headers={'Content-Type': 'application/json'}, timeout=timeout,
+                           allowed_hosts={'127.0.0.1', 'localhost', '::1'},
+                           allow_loopback_http=True) as response:
             if response.status != 200:
                 raise ModelUnavailable(f"Local model HTTP {response.status}")
-            result = json.loads(response.read(2_000_000))
-    except (OSError, ValueError, error.URLError, TimeoutError) as exc:
+            raw = response.read(2_000_001)
+        if len(raw) > 2_000_000:
+            raise ValueError('Local model response exceeds limit')
+        result = json.loads(raw)
+    except (OSError, ValueError, HTTPException, RecursionError) as exc:
         raise ModelUnavailable("Local AI model unavailable or returned invalid data") from exc
-    answer = result.get("message", {}).get("content")
+    if not isinstance(result, dict) or not isinstance(result.get('message'), dict):
+        raise ModelUnavailable('Local AI model returned an invalid message')
+    answer = result['message'].get('content')
     if not isinstance(answer, str) or not answer.strip():
         raise ModelUnavailable("Local AI model returned no answer")
     return answer.strip()

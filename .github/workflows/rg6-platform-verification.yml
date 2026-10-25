@@ -1,0 +1,37 @@
+name: RG6 Platform Hardening Verification
+on:
+  push:
+    branches: [fix/rg6-platform-hardening-20261025]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: rg6-platform-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.12'
+      - name: Install test and scan dependencies
+        run: python -m pip install cryptography==50.0.2 bandit==1.9.4
+      - name: Compile affected source
+        run: python -m py_compile archer_platform.py archer_model.py archer_master_report.py archer_remote_relay.py archer_runtime_check.py archer_secure_transport.py bulldog_install_wizard.py stress_rg6.py
+      - name: Full RG6 regression suite
+        run: python -m unittest discover -s tests -v
+      - name: Coding department and API regressions
+        run: python -m unittest -v test_rg_coding_department test_rg_coding_api
+      - name: Repeat focused regressions 1000 times and stress boundaries
+        run: python stress_rg6.py
+      - name: Security scan must pass
+        run: python -m bandit -r . -x ./tests,./history -f json -o bandit-rg6-ci.json --severity-level medium
