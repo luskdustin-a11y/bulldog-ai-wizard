@@ -8,6 +8,7 @@ import ssl
 import urllib.parse
 import urllib.request
 from archer_secure_transport import make_packet
+from archer_platform import http_response
 
 class RemoteRelay:
     def __init__(self, endpoint, secret, ca_file=None, opener=None):
@@ -27,11 +28,16 @@ class RemoteRelay:
         req = urllib.request.Request(self.endpoint, data=data, headers={"Content-Type":"application/json"}, method="POST")
         ctx = ssl.create_default_context(cafile=self.ca_file)
         # Injection is for offline tests only; default uses certificate-verified HTTPS.
-        response = self.opener(req, context=ctx, timeout=10) if self.opener else urllib.request.urlopen(req, context=ctx, timeout=10)
-        with response:
-            if response.status != 200:
+        response = (self.opener(req, context=ctx, timeout=10) if self.opener else
+                    http_response(self.endpoint, method='POST', data=data,
+                                  headers={'Content-Type': 'application/json'},
+                                  context=ctx, timeout=10))
+        with response as reply:
+            if reply.status != 200:
                 return False
-            body = response.read(1024)
+            body = reply.read(1025)
+        if len(body) > 1024:
+            return False
         try:
             answer = json.loads(body)
         except (ValueError, UnicodeDecodeError):

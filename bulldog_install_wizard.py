@@ -10,7 +10,7 @@ import sys
 import hashlib
 import subprocess
 import webbrowser
-import urllib.request
+from archer_platform import http_response, launch_application
 import urllib.parse
 import tkinter as tk
 from tkinter import ttk, messagebox, scrolledtext
@@ -107,7 +107,9 @@ class BulldogWizard(tk.Tk):
         append(f"Disk free: {free // (1024**3)} GB")
         append(f"Write access to {LOG_DIR}: {'OK' if os.access(LOG_DIR, os.W_OK) else 'DENIED'}")
         try:
-            urllib.request.urlopen("https://www.google.com", timeout=3)
+            with http_response("https://www.google.com", timeout=3,
+                               allowed_hosts={"www.google.com"}) as response:
+                response.read(1)
             append("Internet: Available")
         except Exception:
             append("Internet: Unavailable (optional features limited)")
@@ -283,7 +285,7 @@ class BulldogWizard(tk.Tk):
     def launch(self, cmd):
         if messagebox.askyesno("Confirm Launch", f"Launch {cmd}?"):
             try:
-                subprocess.Popen(cmd, shell=True)
+                launch_application(cmd, owner_approved=True)
                 log(f"Launched {cmd}")
             except Exception as e:
                 messagebox.showerror("Error", str(e))

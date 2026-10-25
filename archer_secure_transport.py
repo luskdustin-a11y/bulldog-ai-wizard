@@ -6,6 +6,7 @@ Requires explicit operator-provided shared secret; never opens a public listener
 import hashlib
 import hmac
 import json
+import math
 import secrets
 import socket
 import socketserver
@@ -22,10 +23,13 @@ def sign(secret, envelope):
     return hmac.new(secret, body, hashlib.sha256).hexdigest()
 
 class LocalReceiver:
-    def __init__(self, secret, allowed_sources, now=time.time):
+    def __init__(self, secret, allowed_sources, now=time.time, *, max_messages=10000):
         if not isinstance(secret, bytes) or len(secret) < 32:
             raise ValueError("Secret must be at least 32 bytes")
         self.secret = secret
+        if type(max_messages) is not int or not 1 <= max_messages <= 100000:
+            raise ValueError('Invalid message capacity')
+        self.max_messages = max_messages
         self.allowed_sources = set(allowed_sources)
         self.now = now
         self.seen = {}
@@ -40,20 +44,34 @@ class LocalReceiver:
             return False
         if not all(isinstance(env[k], str) and env[k] for k in ("id","source","department","payload","nonce")):
             return False
-        if env["source"] not in self.allowed_sources or len(env["payload"].encode()) > MAX_BYTES:
+        try:
+            payload_bytes = env['payload'].encode('utf-8')
+        except UnicodeError:
+            return False
+        if (env["source"] not in self.allowed_sources or len(payload_bytes) > MAX_BYTES
+                or any(len(env[k]) > 256 for k in ('id', 'source', 'department', 'nonce'))):
             return False
         if not isinstance(env["timestamp"], (int,float)) or isinstance(env["timestamp"], bool):
             return False
+        if isinstance(env['timestamp'], float) and not math.isfinite(env['timestamp']):
+            return False
+        if not 0 <= env['timestamp'] <= 1_000_000_000_000_000:
+            return False
         if abs(self.now() - env["timestamp"]) > CLOCK_SKEW:
             return False
-        if not isinstance(packet["signature"], str) or not hmac.compare_digest(sign(self.secret, env), packet["signature"]):
+        signature = packet['signature']
+        if (not isinstance(signature, str) or len(signature) != 64
+                or any(c not in '0123456789abcdef' for c in signature)
+                or not hmac.compare_digest(sign(self.secret, env), signature)):
             return False
         fingerprint = (env["source"], env["department"], env["payload"])
         with self.lock:
             if env["id"] in self.seen:
                 return self.seen[env["id"]] == fingerprint  # reject ID reuse with changed contents
+            if len(self.messages) >= self.max_messages:
+                return False  # Backpressure; never discard accepted history silently.
             self.seen[env["id"]] = fingerprint
-            self.messages.append(env)
+            self.messages.append(dict(env))
         return True
 
 def make_packet(secret, event, timestamp=None):

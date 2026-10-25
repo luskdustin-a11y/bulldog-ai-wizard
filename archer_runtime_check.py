@@ -5,7 +5,7 @@ import platform
 import shutil
 import sys
 from pathlib import Path
-from urllib import request
+from archer_platform import http_response
 
 def inspect_local_machine():
     home = Path.home()
@@ -29,11 +29,23 @@ def inspect_local_machine():
     except ImportError:
         pass
     try:
-        with request.urlopen("http://127.0.0.1:11434/api/tags", timeout=2) as response:
-            payload = json.loads(response.read(200_000))
+        with http_response("http://127.0.0.1:11434/api/tags", timeout=2,
+                           allowed_hosts={"127.0.0.1"}, allow_loopback_http=True) as response:
+            raw = response.read(200_001)
+        if len(raw) > 200_000:
+            raise ValueError('Model catalog exceeds limit')
+        payload = json.loads(raw)
+        if not isinstance(payload, dict) or not isinstance(payload.get('models'), list):
+            raise ValueError('Invalid model catalog')
+        models = payload['models']
+        if len(models) > 200 or any(not isinstance(m, dict)
+                or not isinstance(m.get('name'), str) or not 0 < len(m['name']) <= 512
+                for m in models):
+            raise ValueError('Invalid model entries')
+        names = [m['name'] for m in models]
         result["local_model_server"] = True
-        result["model_names"] = [str(m.get("name", "")) for m in payload.get("models", [])]
-    except (OSError, ValueError, KeyError):
+        result["model_names"] = names
+    except (OSError, ValueError, KeyError, RecursionError):
         pass
     return result
 

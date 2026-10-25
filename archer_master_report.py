@@ -6,20 +6,29 @@ import json
 import os
 from datetime import datetime, timezone
 from pathlib import Path
-from urllib.request import Request, urlopen
+from urllib.parse import quote
+from archer_platform import http_response
 
 API = "https://api.github.com"
 REPO = os.environ.get("GITHUB_REPOSITORY", "luskdustin-a11y/bulldog-ai-wizard")
 BRANCH = os.environ.get("ARCHER_REPORT_BRANCH", "archer-stage4-integration-hardening")
 
 def get_json(path):
-    request = Request(API + path, headers={"Accept": "application/vnd.github+json",
-        "User-Agent": "archer-report", "Authorization": "Bearer " + os.environ.get("GITHUB_TOKEN", "")})
-    with urlopen(request, timeout=20) as response:
-        return json.load(response)
+    if not path.startswith('/repos/') or any(c in path for c in ('\\', '\r', '\n', '#')):
+        raise ValueError('Invalid GitHub API path')
+    headers = {"Accept": "application/vnd.github+json", "User-Agent": "archer-report"}
+    token = os.environ.get("GITHUB_TOKEN", "")
+    if token:
+        headers["Authorization"] = "Bearer " + token
+    with http_response(API + path, headers=headers, timeout=20,
+                       allowed_hosts={'api.github.com'}) as response:
+        raw = response.read(2_000_001)
+    if len(raw) > 2_000_000:
+        raise ValueError('GitHub response exceeds limit')
+    return json.loads(raw)
 
 def gather():
-    data = get_json(f"/repos/{REPO}/actions/runs?branch={BRANCH}&per_page=100")
+    data = get_json(f"/repos/{quote(REPO, safe='/')}/actions/runs?branch={quote(BRANCH, safe='')}&per_page=100")
     runs = data.get("workflow_runs", [])
     return [{"name": r["name"], "commit": r["head_sha"][:12],
              "status": r["status"], "result": r.get("conclusion") or "pending",
