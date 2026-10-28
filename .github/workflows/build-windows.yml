@@ -1,8 +1,13 @@
 name: Build Windows Wizard
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - 'bulldog_install_wizard.py'
+      - 'requirements.txt'
+      - '.github/workflows/build-windows.yml'
   push:
-    branches: [main]
+    branches: [main, 'repair/archie-4.3-stabilization-2026-10-27']
     paths:
       - 'bulldog_install_wizard.py'
       - 'requirements.txt'
@@ -19,6 +24,8 @@ jobs:
           python-version: '3.13'
       - name: Validate syntax
         run: python -m py_compile bulldog_install_wizard.py
+      - name: Run standard library smoke tests
+        run: python -m unittest discover -s . -p 'test_*.py' -v
       - name: Install PyInstaller
         run: python -m pip install "pyinstaller>=6,<7"
       - name: Build executable
