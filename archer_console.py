@@ -12,6 +12,11 @@ def main():
     parser.add_argument("--local-ai", action="store_true", help="Use an explicitly running local Ollama model")
     parser.add_argument("--model", default="llama3.2", help="Installed local Ollama model name")
     args = parser.parse_args()
+    import bulldawg_core as core
+    if core.vault_enabled():
+        import getpass
+        if not core.unlock_vault(getpass.getpass("Vault passphrase: ")):
+            raise SystemExit("Wrong passphrase")
     print("ARCHER local console. Commands: /save DEPARTMENT: note, /notes DEPARTMENT, /quit")
     while True:
         try:
@@ -38,7 +43,7 @@ def main():
                     answer = routed.text + ' Local AI model is unavailable.'
             else:
                 answer = respond(message).text
-        except (ValueError, OSError) as exc:
+        except (ValueError, OSError, PermissionError, RuntimeError) as exc:
             answer = f"Unable to complete: {exc}"
         print("ARCHER>", answer)
         if args.speak:

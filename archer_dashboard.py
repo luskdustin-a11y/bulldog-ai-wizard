@@ -24,7 +24,24 @@ class ArcherDashboard(tk.Tk):
         self.bind_all('<Button>', self._activity, add='+')
         self.after(10000, self._idle_check)
         self._build()
+        if not self._unlock_vault():
+            self.after(0, self.destroy)
+            return
         self.refresh()
+
+    def _unlock_vault(self):
+        """Prompt for the vault passphrase (up to 3 tries) when the vault is enabled and locked."""
+        if not core.vault_enabled():
+            return True
+        from tkinter import simpledialog
+        for _ in range(3):
+            entered = simpledialog.askstring("ARCHER vault", "Enter your vault passphrase", show="*", parent=self)
+            if entered is None:
+                break
+            if core.unlock_vault(entered):
+                return True
+            messagebox.showerror("Vault", "Wrong passphrase", parent=self)
+        return False
 
     def _activity(self, _event=None):
         self._last_activity = __import__('time').monotonic()
@@ -37,7 +54,8 @@ class ArcherDashboard(tk.Tk):
             from archer_pin import PinGate
             gate = PinGate(Path.home() / '.bulldawg_ai' / 'owner_pin.json')
             entered = simpledialog.askstring('ARCHER locked', 'Enter your PIN to unlock', show='*', parent=self)
-            if entered is not None and gate.unlock(entered):
+            core.lock_vault()
+            if entered is not None and gate.unlock(entered) and self._unlock_vault():
                 self._activity()
                 self.deiconify()
             else:
