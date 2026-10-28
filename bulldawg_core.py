@@ -4,6 +4,7 @@ import base64
 import hashlib
 import json
 import os
+import shutil
 import sqlite3
 import sys
 from contextlib import contextmanager
@@ -73,8 +74,53 @@ def unlock_vault(passphrase):
     _key = key
     return True
 
+def _backup_dir():
+    return ROOT / "backups"
+
+def backup_before_migration():
+    """Consistent copy of the notes database, kept permanently. Returns its path."""
+    _backup_dir().mkdir(mode=0o700, parents=True, exist_ok=True)
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+    target = _backup_dir() / f"core-pre-vault-{stamp}.db"
+    source = connect()
+    try:
+        copy = sqlite3.connect(target)
+        try:
+            source.backup(copy)
+        finally:
+            copy.close()
+    finally:
+        source.close()
+    if os.name != "nt":
+        os.chmod(target, 0o600)
+    return target
+
+def restore_backup(backup_path):
+    """Restore a pre-migration backup. Current DB is kept as .replaced, never deleted."""
+    global _key
+    backup_path = Path(backup_path)
+    check = sqlite3.connect(backup_path)
+    try:
+        if check.execute("PRAGMA integrity_check").fetchone()[0] != "ok":
+            raise ValueError("Backup failed integrity check")
+        check.execute("SELECT COUNT(*) FROM notes").fetchone()
+    finally:
+        check.close()
+    if DB.exists():
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+        os.replace(DB, DB.with_name(f"{DB.name}.replaced-{stamp}"))
+    shutil.copy2(backup_path, DB)
+    if os.name != "nt":
+        os.chmod(DB, 0o600)
+    _vault_file().unlink(missing_ok=True)
+    _key = None
+
 def enable_vault(passphrase):
-    """Create the vault and encrypt all existing plaintext notes."""
+    """Encrypt all notes. A verified backup is taken first and any failure rolls back.
+
+    The vault file is written first (readers pass plaintext rows through), and the
+    conversion is one transaction, so a crash leaves every note readable.
+    """
     global _key
     if vault_enabled():
         raise PermissionError("Vault already enabled")
@@ -82,19 +128,30 @@ def enable_vault(passphrase):
     key = _derive(passphrase, salt)
     nonce = os.urandom(12)
     check = base64.b64encode(nonce + _aes(key).encrypt(nonce, b"ok", VAULT_MAGIC)).decode()
+    backup = backup_before_migration()
+    ROOT.mkdir(mode=0o700, parents=True, exist_ok=True)
+    pending = _vault_file().with_suffix(".tmp")
+    pending.write_text(json.dumps({"salt": salt.hex(), "check": check}), encoding="utf-8")
+    if os.name != "nt":
+        os.chmod(pending, 0o600)
+    os.replace(pending, _vault_file())
     _key = key
     try:
         with managed_connection() as db:
-            for note_id, text in db.execute("SELECT id,text FROM notes").fetchall():
+            originals = db.execute("SELECT id,text FROM notes").fetchall()
+            for note_id, text in originals:
+                if text.startswith(PREFIX):
+                    continue
                 db.execute("UPDATE notes SET text=? WHERE id=?", (_encrypt(text), note_id))
-            ROOT.mkdir(mode=0o700, parents=True, exist_ok=True)
-            with _vault_file().open("x", encoding="utf-8") as stream:
-                json.dump({"salt": salt.hex(), "check": check}, stream)
+            for note_id, text in originals:
+                stored = db.execute("SELECT text FROM notes WHERE id=?", (note_id,)).fetchone()[0]
+                if _decrypt(stored) != text:
+                    raise RuntimeError("Verification failed for note %d" % note_id)
     except BaseException:
         _key = None
+        _vault_file().unlink(missing_ok=True)
         raise
-    if os.name != "nt":
-        os.chmod(_vault_file(), 0o600)
+    return backup
 
 def connect():
     ROOT.mkdir(mode=0o700, parents=True, exist_ok=True)
@@ -170,8 +227,8 @@ def main():
     args = p.parse_args()
     import getpass
     if args.command == "enable-vault":
-        enable_vault(getpass.getpass("New vault passphrase (12+ chars): "))
-        print(json.dumps({"vault_enabled": True}))
+        backup = enable_vault(getpass.getpass("New vault passphrase (12+ chars): "))
+        print(json.dumps({"vault_enabled": True, "backup": str(backup)}))
         return
     if vault_enabled() and args.command in ("add-note", "notes") and not unlock_vault(getpass.getpass("Vault passphrase: ")):
         sys.exit("Wrong passphrase")
