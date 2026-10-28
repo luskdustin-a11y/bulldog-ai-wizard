@@ -4,3 +4,4 @@ pyinstaller>=6.0
 # pyserial
 # Pillow
 # requests
+cryptography>=42.0
