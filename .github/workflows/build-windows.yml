@@ -2,16 +2,9 @@ name: Build Windows Wizard
 on:
   workflow_dispatch:
   pull_request:
-    paths:
-      - 'bulldog_install_wizard.py'
-      - 'requirements.txt'
-      - '.github/workflows/build-windows.yml'
+    branches: [main, 'repair/archie-4.3-stabilization-2026-10-27']
   push:
     branches: [main, 'repair/archie-4.3-stabilization-2026-10-27']
-    paths:
-      - 'bulldog_install_wizard.py'
-      - 'requirements.txt'
-      - '.github/workflows/build-windows.yml'
 permissions:
   contents: read
 jobs:
