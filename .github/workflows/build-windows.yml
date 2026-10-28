@@ -30,6 +30,18 @@ jobs:
         run: python -m pip install "pyinstaller>=6,<7"
       - name: Build executable
         run: python -m PyInstaller --clean --onefile --windowed --name BulldawgAI_InstallWizard bulldog_install_wizard.py
+      - name: Smoke-launch packaged GUI
+        shell: pwsh
+        run: |
+          $exe = Join-Path $PWD 'dist/BulldawgAI_InstallWizard.exe'
+          $process = Start-Process -FilePath $exe -PassThru
+          try {
+            Start-Sleep -Seconds 8
+            $process.Refresh()
+            if ($process.HasExited) { throw "Wizard exited unexpectedly with code $($process.ExitCode)" }
+          } finally {
+            if (!$process.HasExited) { Stop-Process -Id $process.Id -Force }
+          }
       - name: Check executable and hash
         shell: pwsh
         run: |
