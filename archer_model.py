@@ -25,6 +25,8 @@ def chat(message, system_prompt, model="llama3.2", base_url="http://127.0.0.1:11
         raise ValueError("System prompt required")
     if not isinstance(model, str) or not model.strip() or len(model) > 100:
         raise ValueError("Model name required")
+    if model.strip().lower().endswith(":cloud"):
+        raise ValueError("Cloud model names are prohibited in private local mode")
     endpoint = _local_url(base_url) + "/api/chat"
     payload = json.dumps({"model": model, "stream": False, "messages": [
         {"role": "system", "content": system_prompt},
@@ -42,3 +44,19 @@ def chat(message, system_prompt, model="llama3.2", base_url="http://127.0.0.1:11
     if not isinstance(answer, str) or not answer.strip():
         raise ModelUnavailable("Local AI model returned no answer")
     return answer.strip()
+
+
+def local_models(base_url="http://127.0.0.1:11434", timeout=5):
+    """List models from the loopback Ollama server; never install or download."""
+    endpoint = _local_url(base_url) + "/api/tags"
+    try:
+        with request.urlopen(endpoint, timeout=timeout) as response:
+            if response.status != 200:
+                raise ModelUnavailable("Local model listing failed")
+            payload = json.loads(response.read(1_000_000))
+    except (OSError, ValueError, error.URLError, TimeoutError) as exc:
+        raise ModelUnavailable("Local Ollama server unavailable") from exc
+    models = payload.get("models") if isinstance(payload, dict) else None
+    if not isinstance(models, list):
+        raise ModelUnavailable("Invalid local model listing")
+    return sorted({item["name"] for item in models if isinstance(item, dict) and isinstance(item.get("name"), str) and not item["name"].lower().endswith(":cloud")})

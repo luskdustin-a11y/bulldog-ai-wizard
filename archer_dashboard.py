@@ -5,8 +5,7 @@ import threading
 from tkinter import messagebox, ttk
 import bulldawg_core as core
 from archer_persona import SYSTEM_NAME, build_system_prompt, ResponseContext
-from archer_brain import respond
-from archer_model import chat, ModelUnavailable
+from archer_chat_service import answer
 
 class ArcherDashboard(tk.Tk):
     def __init__(self):
@@ -125,19 +124,12 @@ class ArcherDashboard(tk.Tk):
         use_ai = self.ai_enabled.get()
         def worker():
             try:
-                routed = respond(message)
-                if use_ai:
-                    prompt = build_system_prompt(ResponseContext(safety_critical=routed.mode == "serious"))
-                    try:
-                        answer = chat(message, prompt)
-                    except ModelUnavailable:
-                        answer = routed.text + " Local AI unavailable."
-                else:
-                    answer = routed.text
+                reply = answer(message, use_local_ai=use_ai)
+                answer_text = reply.text
             except Exception as exc:
-                answer = f"ARCHER could not complete this request: {type(exc).__name__}"
+                answer_text = f"ARCHER could not complete this request: {type(exc).__name__}"
             def done():
-                self.chat_reply.configure(text=answer)
+                self.chat_reply.configure(text=answer_text)
                 self.ai_busy = False
                 self.ask_button.configure(state="normal")
             self.after(0, done)
