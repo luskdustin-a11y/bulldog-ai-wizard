@@ -2,9 +2,9 @@ name: Build Windows Wizard
 on:
   workflow_dispatch:
   pull_request:
-    branches: [main, 'repair/archie-4.3-stabilization-2026-10-27']
+    branches: [main, 'repair/archie-4.3-stabilization-2026-10-27', 'repair/windows-wizard-20261029']
   push:
-    branches: [main, 'repair/archie-4.3-stabilization-2026-10-27']
+    branches: [main, 'repair/archie-4.3-stabilization-2026-10-27', 'repair/windows-wizard-20261029']
 permissions:
   contents: read
 jobs:

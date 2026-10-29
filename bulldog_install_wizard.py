@@ -23,7 +23,6 @@ import json
 
 VERSION = "1.4.0"
 LOG_DIR = Path(os.path.expanduser("~")) / ".bulldog_ai"
-LOG_DIR.mkdir(parents=True, exist_ok=True)
 LOG_FILE = LOG_DIR / "wizard.log"
 
 def log(msg):
@@ -39,9 +38,12 @@ class BulldogWizard(tk.Tk):
         self.resizable(False, False)
         self.configure(bg="#f0f0f0")
 
+        LOG_DIR.mkdir(parents=True, exist_ok=True)
         self.current_step = 0
         self.selected_components = {}
         self.install_finished = False
+        self.install_attempted = False
+        self.install_in_progress = False
         self.steps = [
             self.screen_welcome,
             self.screen_system_check,
@@ -62,6 +64,8 @@ class BulldogWizard(tk.Tk):
         self.steps[self.current_step]()
 
     def next_step(self):
+        if self.install_in_progress:
+            return
         if self.current_step < len(self.steps) - 1:
             self.current_step += 1
             self.show_step()
@@ -190,6 +194,9 @@ class BulldogWizard(tk.Tk):
             return
         if not messagebox.askyesno("Owner approval", "Proceed with these actions?\n\n" + "\n".join(selected) + "\n\nPython packages use the current Python environment. External tools open official vendor pages; no external executable is silently run."):
             return
+        self.install_attempted = True
+        self.install_in_progress = True
+        self.install_finished = False
         self.install_button.config(state="disabled")
         self.next_button.config(state="disabled")
         self.progress["value"] = 0
@@ -247,6 +254,7 @@ class BulldogWizard(tk.Tk):
         self.after(0, lambda: self._finish_installs(failures))
 
     def _finish_installs(self, failures):
+        self.install_in_progress = False
         self.install_button.config(state="normal")
         self.next_button.config(state="normal")
         if failures:
@@ -262,18 +270,17 @@ class BulldogWizard(tk.Tk):
         frame.pack(fill="both", expand=True)
 
         ttk.Label(frame, text="Done + Launch Pad", font=("Segoe UI", 14, "bold")).pack(anchor="w", pady=(0,10))
-        ttk.Label(frame, text="Launch pad (not a complete Bulldawg AI installation):").pack(anchor="w")
+        ttk.Label(frame, text="Launch pad (not a complete Archie installation):").pack(anchor="w")
+        ttk.Label(frame, text=("Selected packages verified" if self.install_finished else "Archie installation NOT verified"), foreground=("green" if self.install_finished else "red")).pack(anchor="w")
 
         buttons = [
-            ("Chrome", "chrome"),
             ("Edge", "msedge"),
             ("Notepad", "notepad"),
             ("File Explorer", "explorer"),
-            ("Torque", "torque"),
             ("Command Prompt", "cmd"),
         ]
         for label, cmd in buttons:
-            state = "normal" if shutil.which(cmd) or (cmd == "explorer") else "disabled"
+            state = "normal" if shutil.which(cmd) or (cmd in {"explorer", "notepad", "cmd"}) else "disabled"
             ttk.Button(frame, text=label, state=state,
                        command=lambda c=cmd: self.launch(c)).pack(fill="x", padx=20, pady=2)
 
@@ -283,7 +290,9 @@ class BulldogWizard(tk.Tk):
     def launch(self, cmd):
         if messagebox.askyesno("Confirm Launch", f"Launch {cmd}?"):
             try:
-                subprocess.Popen(cmd, shell=True)
+                if cmd not in {"msedge", "notepad", "explorer", "cmd"}:
+                    raise ValueError("Launch target not approved")
+                subprocess.Popen([cmd], shell=False)
                 log(f"Launched {cmd}")
             except Exception as e:
                 messagebox.showerror("Error", str(e))
