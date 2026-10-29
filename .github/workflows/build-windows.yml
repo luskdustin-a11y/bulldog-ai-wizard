@@ -1,12 +1,10 @@
 name: Build Windows Wizard
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [main, 'repair/archie-4.3-stabilization-2026-10-27']
   push:
-    branches: [main]
-    paths:
-      - 'bulldog_install_wizard.py'
-      - 'requirements.txt'
-      - '.github/workflows/build-windows.yml'
+    branches: [main, 'repair/archie-4.3-stabilization-2026-10-27']
 permissions:
   contents: read
 jobs:
@@ -19,10 +17,24 @@ jobs:
           python-version: '3.13'
       - name: Validate syntax
         run: python -m py_compile bulldog_install_wizard.py
+      - name: Run standard library smoke tests
+        run: python -m unittest discover -s . -p 'test_*.py' -v
       - name: Install PyInstaller
         run: python -m pip install "pyinstaller>=6,<7"
       - name: Build executable
         run: python -m PyInstaller --clean --onefile --windowed --name BulldawgAI_InstallWizard bulldog_install_wizard.py
+      - name: Smoke-launch packaged GUI
+        shell: pwsh
+        run: |
+          $exe = Join-Path $PWD 'dist/BulldawgAI_InstallWizard.exe'
+          $process = Start-Process -FilePath $exe -PassThru
+          try {
+            Start-Sleep -Seconds 8
+            $process.Refresh()
+            if ($process.HasExited) { throw "Wizard exited unexpectedly with code $($process.ExitCode)" }
+          } finally {
+            if (!$process.HasExited) { Stop-Process -Id $process.Id -Force }
+          }
       - name: Check executable and hash
         shell: pwsh
         run: |
