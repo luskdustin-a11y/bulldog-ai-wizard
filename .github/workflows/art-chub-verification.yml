@@ -1,0 +1,50 @@
+name: Art Chub v0.5 and D5 v0.6 verification
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  art-chub:
+    name: Art Chub ${{ matrix.version }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        version: ['v0.5', 'v0.6']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Restore candidate from base64 payload
+        shell: python
+        run: |
+          import base64, pathlib, zipfile
+          version = '${{ matrix.version }}'
+          raw = pathlib.Path('art_chub_test_packages', version + '.zip.base64').read_text(encoding='utf-8')
+          blob = base64.b64decode(raw, validate=True)
+          archive = pathlib.Path('candidate.zip')
+          archive.write_bytes(blob)
+          with zipfile.ZipFile(archive) as z:
+              for member in z.infolist():
+                  p = pathlib.PurePosixPath(member.filename)
+                  if p.is_absolute() or '..' in p.parts:
+                      raise ValueError('Unsafe ZIP path')
+              z.extractall('candidate')
+          print('Candidate archive validated:', len(blob), 'bytes')
+      - name: Compile Python
+        working-directory: candidate
+        run: python -m compileall -q art_chub tests
+      - name: Run complete unit tests
+        working-directory: candidate
+        run: python -m unittest discover -s tests -p "test_*.py" -v
+      - name: Preserve evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: art-chub-${{ matrix.version }}-${{ matrix.os }}-candidate
+          path: candidate/TEST_RESULTS.txt
+          if-no-files-found: warn
