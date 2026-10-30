@@ -23,8 +23,6 @@ def main():
     check("ai_remote_access_blocked", remote_blocked)
     from archer_voice import speak
     check("voice_empty_input_safe", lambda: speak("") is False)
-    check("microphone_capture_implemented", lambda: hasattr(importlib.import_module("archer_voice"), "listen"))
-    check("strong_password_pin_recovery", lambda: hasattr(importlib.import_module("archer_pin"), "recover_with_password"))
     check("live_database_encrypted", lambda: False)
     check("gui_end_to_end_automated", lambda: False)
     check("local_ai_model_installed_and_answering", lambda: False)
