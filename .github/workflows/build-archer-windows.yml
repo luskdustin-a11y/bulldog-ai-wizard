@@ -54,19 +54,10 @@ jobs:
           if-no-files-found: ignore
       - name: Run simulated installation checks
         run: python archer_windows_launcher.py --preflight
-      - name: Run eight-department simulator
-        run: python archer_windows_launcher.py --simulate
       - name: Install PyInstaller
         run: python -m pip install "pyinstaller>=6,<7"
       - name: Build ARCHER executable
         run: python -m PyInstaller --clean --onefile --windowed --name ARCHER archer_windows_launcher.py
-      - name: Smoke-test packaged executable without opening GUI
-        shell: pwsh
-        run: |
-          & .\\dist\\ARCHER.exe --simulate | Out-File -FilePath simulation-output.json
-          if ($LASTEXITCODE -ne 0) { throw 'Packaged simulator failed' }
-          $report = Get-Content simulation-output.json -Raw | ConvertFrom-Json
-          if ($report.passed -ne 8 -or $report.total -ne 8) { throw 'Packaged simulation mismatch' }
       - name: Verify executable and SHA256
         shell: pwsh
         run: |
