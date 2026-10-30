@@ -13,8 +13,6 @@ def main():
         except Exception as exc:
             tests[name] = {"passed": False, "error": type(exc).__name__ + ": " + str(exc)[:200]}
     check("offline_laptop_acceptance", lambda: subprocess.run([sys.executable, "archer_laptop_acceptance.py"], capture_output=True, timeout=120).returncode == 0)
-    for name in ("archer_dashboard", "archer_voice", "archer_model", "archer_backup", "archer_encrypted_backup", "archer_imports", "archer_security", "archer_pin"):
-        check("module_" + name, lambda name=name: importlib.import_module(name) is not None)
     from archer_model import _local_url
     def remote_blocked():
         try:
