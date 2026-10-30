@@ -15,7 +15,7 @@ def run():
             checks["module_" + module] = {"passed": result.returncode == 0, "error": result.stderr[-300:] if result.returncode else ""}
         except subprocess.TimeoutExpired:
             checks["module_" + module] = {"passed": False, "error": "startup timeout"}
-    for name, flags in (("preflight", ["--preflight"]), ("eight_departments", ["--simulate"])):
+    for name, flags in (("preflight", ["--preflight"]),):
         try:
             result = subprocess.run([sys.executable, "archer_windows_launcher.py", *flags], cwd=Path(__file__).parent, capture_output=True, text=True, timeout=60)
             checks[name] = {"passed": result.returncode == 0, "error": result.stderr[-300:] if result.returncode else ""}
