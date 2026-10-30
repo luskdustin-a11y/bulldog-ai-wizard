@@ -1,40 +1,23 @@
-"""ARCHER isolated laptop simulation: no real device, network or financial actions."""
+"""Simulator functionality disabled pending verified behavioral tests.
+
+The former eight-department routine only checked keyword routing and was
+incorrectly used as evidence that departments worked. No simulated success
+is reported until real, isolated behavior tests exist.
+"""
 import json
-import tempfile
 from pathlib import Path
 
-SCENARIOS = {
-    "Shop AI": {"input": "P1211 diagnostic trouble code", "expected": "simulated vehicle fault"},
-    "VAL": {"input": "EGT temperature warning", "expected": "simulated truck telemetry"},
-    "Hunting": {"input": "Deer spotted at six foot blind", "expected": "simulated camera event"},
-    "Property": {"input": "Property renovation scheduled", "expected": "simulated property task"},
-    "Hotshot": {"input": "Dispatch a trailer load", "expected": "simulated load request"},
-    "Finances": {"input": "Reconcile an invoice", "expected": "simulated ledger event"},
-    "Stocks": {"input": "Portfolio price changed", "expected": "simulated market event"},
-    "Supervisor": {"input": "Storage service failed", "expected": "simulated failure event"},
-}
-
 def run_simulation(output_dir=None):
-    """Exercise representative department events without touching real records."""
-    from archer_brain import route
-    events = []
-    for department, scenario in SCENARIOS.items():
-        detected = route(scenario["input"])
-        events.append({
-            "department": department,
-            "input": scenario["input"],
-            "expected_event": scenario["expected"],
-            "detected_department": detected,
-            "passed": detected == department,
-            "simulated": True,
-        })
     report = {
         "simulation_only": True,
         "real_hardware_connected": False,
         "external_accounts_connected": False,
-        "events": events,
-        "passed": sum(e["passed"] for e in events),
-        "total": len(events),
+        "status": "NOT_VERIFIED",
+        "reason": "Misleading keyword-routing checks removed; functional scenarios not implemented.",
+        "events": [],
+        "passed": 0,
+        "total": 0,
+        "verified_functional_tests": 0,
     }
     if output_dir is not None:
         path = Path(output_dir)
