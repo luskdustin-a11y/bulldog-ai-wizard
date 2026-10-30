@@ -12,7 +12,7 @@ def main():
     hp = simulate_install()
     checks["hp_simulation_only"] = hp.get("simulation_only") is True and hp.get("device_scanned") is False
     result = run_simulation()
-    checks["eight_departments"] = result.get("passed") == 8 and result.get("total") == 8
+    checks["simulator_not_falsely_certified"] = result.get("status") == "NOT_VERIFIED" and result.get("verified_functional_tests") == 0
     with tempfile.TemporaryDirectory() as folder:
         pinfile = Path(folder) / "owner_pin.json"
         gate = PinGate(pinfile)
