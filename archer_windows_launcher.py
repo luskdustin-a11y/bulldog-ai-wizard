@@ -19,7 +19,7 @@ def main():
         import json
         result = run_simulation()
         print(json.dumps(result, indent=2))
-        return 0 if result["passed"] == result["total"] else 1
+        return 1  # Disabled simulator must never report success
     if args.preflight:
         import json
         print(json.dumps(simulate_install(), indent=2))
