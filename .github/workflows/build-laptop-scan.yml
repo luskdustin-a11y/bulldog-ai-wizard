@@ -1,0 +1,45 @@
+name: Build Archie Laptop Scan
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'archer_laptop_scan.py'
+      - 'archer_install_preflight.py'
+      - 'tests/test_archer_laptop_scan.py'
+      - '.github/workflows/build-laptop-scan.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Tests
+        run: python -m unittest tests.test_archer_laptop_scan -v
+      - name: Install PyInstaller
+        run: python -m pip install "pyinstaller>=6,<7"
+      - name: Build
+        run: python -m PyInstaller --clean --onefile --name ArchieLaptopScan archer_laptop_scan.py
+      - name: Run it on this Windows machine (real scan)
+        shell: pwsh
+        run: |
+          'x' | .\dist\ArchieLaptopScan.exe
+          if ($LASTEXITCODE -ne 0) { throw 'Scan exe failed' }
+      - name: Checksum
+        shell: pwsh
+        run: |
+          $h = (Get-FileHash dist\ArchieLaptopScan.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$h  ArchieLaptopScan.exe" | Set-Content dist\ArchieLaptopScan.exe.sha256 -Encoding ascii
+          "SHA256 $h" | Add-Content $env:GITHUB_STEP_SUMMARY
+      - name: Publish draft pre-release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "laptop-scan-${{ github.run_id }}" dist/ArchieLaptopScan.exe dist/ArchieLaptopScan.exe.sha256 --draft --prerelease --target ${{ github.sha }} --title "Archie Laptop Scan ${{ github.run_id }}" --notes "Read-only laptop scan tool. Not a main release."
+          if ($LASTEXITCODE -ne 0) { throw 'Release publish failed' }
