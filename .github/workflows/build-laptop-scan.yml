@@ -6,6 +6,7 @@ on:
       - 'archer_laptop_scan.py'
       - 'archer_install_preflight.py'
       - 'tests/test_archer_laptop_scan.py'
+      - 'installer/laptop-scan.iss'
       - '.github/workflows/build-laptop-scan.yml'
 
 permissions:
@@ -30,16 +31,40 @@ jobs:
         run: |
           'x' | .\dist\ArchieLaptopScan.exe
           if ($LASTEXITCODE -ne 0) { throw 'Scan exe failed' }
+      - name: Compile installer
+        shell: pwsh
+        run: |
+          $compiler = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (!(Test-Path $compiler)) { throw 'Inno Setup missing' }
+          & $compiler installer\laptop-scan.iss
+          if ($LASTEXITCODE -ne 0) { throw 'Inno Setup failed' }
+      - name: Install, run, uninstall test
+        shell: pwsh
+        run: |
+          $setup = 'installer\output\ArchieLaptopScan-Setup.exe'
+          $dir = "$env:LOCALAPPDATA\Programs\ArchieLaptopScan"
+          $p = Start-Process $setup -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "Install failed $($p.ExitCode)" }
+          if (!(Test-Path "$dir\ArchieLaptopScan.exe")) { throw 'Not installed' }
+          'x' | & "$dir\ArchieLaptopScan.exe"
+          if ($LASTEXITCODE -ne 0) { throw 'Installed scan failed' }
+          $p = Start-Process $setup -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw 'Reinstall failed' }
+          $un = Get-ChildItem $dir -Filter 'unins*.exe' | Select-Object -First 1
+          $p = Start-Process $un.FullName -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES' -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw 'Uninstall failed' }
+          Start-Sleep 3
+          if (Test-Path "$dir\ArchieLaptopScan.exe") { throw 'Files left after uninstall' }
       - name: Checksum
         shell: pwsh
         run: |
-          $h = (Get-FileHash dist\ArchieLaptopScan.exe -Algorithm SHA256).Hash.ToLowerInvariant()
-          "$h  ArchieLaptopScan.exe" | Set-Content dist\ArchieLaptopScan.exe.sha256 -Encoding ascii
+          $h = (Get-FileHash installer\output\ArchieLaptopScan-Setup.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$h  ArchieLaptopScan-Setup.exe" | Set-Content installer\output\ArchieLaptopScan-Setup.exe.sha256 -Encoding ascii
           "SHA256 $h" | Add-Content $env:GITHUB_STEP_SUMMARY
       - name: Publish draft pre-release
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "laptop-scan-${{ github.run_id }}" dist/ArchieLaptopScan.exe dist/ArchieLaptopScan.exe.sha256 --draft --prerelease --target ${{ github.sha }} --title "Archie Laptop Scan ${{ github.run_id }}" --notes "Read-only laptop scan tool. Not a main release."
+          gh release create "laptop-scan-setup-${{ github.run_id }}" installer/output/ArchieLaptopScan-Setup.exe installer/output/ArchieLaptopScan-Setup.exe.sha256 --draft --prerelease --target ${{ github.sha }} --title "Archie Laptop Scan Setup ${{ github.run_id }}" --notes "Standalone read-only laptop scan installer. Separate from Archie. Not a main release."
           if ($LASTEXITCODE -ne 0) { throw 'Release publish failed' }
